@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Upload,
   FileText,
@@ -379,6 +380,7 @@ export default function PocketImporter() {
             <p className="text-muted-foreground">{"RIP Pocket. Import and explore your articles and highlights."} </p>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {cacheInfo && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
                 <Database className="h-4 w-4" />
@@ -456,27 +458,31 @@ export default function PocketImporter() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{stats.totalArticles}</div>
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
                   <div className="text-sm text-muted-foreground">Total Articles</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{stats.readArticles}</div>
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
                   <div className="text-sm text-muted-foreground">Read</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">{stats.unreadArticles}</div>
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
                   <div className="text-sm text-muted-foreground">Unread</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">{stats.favoriteArticles}</div>
+                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    {stats.favoriteArticles}
+                  </div>
                   <div className="text-sm text-muted-foreground">Favorites</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{stats.articlesWithHighlights}</div>
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {stats.articlesWithHighlights}
+                  </div>
                   <div className="text-sm text-muted-foreground">With Highlights</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-pink-600">{stats.totalHighlights}</div>
+                  <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
                   <div className="text-sm text-muted-foreground">Total Highlights</div>
                 </div>
               </div>
@@ -534,7 +540,7 @@ export default function PocketImporter() {
                         />
                         <Label htmlFor="favorites-only" className="flex items-center gap-1">
                           <Star className="h-4 w-4" />
-                          Favorites Only
+                          Favorites
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -545,7 +551,7 @@ export default function PocketImporter() {
                         />
                         <Label htmlFor="highlights-only" className="flex items-center gap-1">
                           <HighlightIcon className="h-4 w-4" />
-                          With Highlights Only
+                          Highlights
                         </Label>
                       </div>
                     </div>
@@ -563,7 +569,7 @@ export default function PocketImporter() {
                               {tag}
                               <button
                                 onClick={() => handleTagToggle(tag)}
-                                className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                                className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
                               >
                                 <X className="h-3 w-3" />
                               </button>
@@ -638,7 +644,7 @@ export default function PocketImporter() {
                                 {article.status}
                               </Badge>
                               {highlights.length > 0 && (
-                                <Badge variant="outline" className="text-purple-600">
+                                <Badge variant="outline" className="text-purple-600 dark:text-purple-400">
                                   {highlights.length} highlight{highlights.length !== 1 ? "s" : ""}
                                 </Badge>
                               )}
@@ -774,7 +780,7 @@ export default function PocketImporter() {
           <div className="text-center text-sm text-muted-foreground">
             Made with AI by{" "}
             <a
-              href="https://twitter.com/mfyameen"
+              href="https://github.com/mfyameen"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-foreground transition-colors"

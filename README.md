@@ -329,6 +329,6 @@ If you find this project helpful, consider:
 
 ---
 
-**Made with AI by [@mfyameen](https://twitter.com/mfyameen)**
+**Made with AI by [@mfyameen](https://github.com/mfyameen)**
 
 *Built with ❤️ using Next.js, React, and modern web technologies*

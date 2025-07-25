@@ -287,6 +287,43 @@ export default function PocketImporter() {
     return highlightData.find((item) => item.url === url)?.highlights || []
   }
 
+  // Calculate available tags based on current filters (excluding tag filters)
+  const availableTagsForCurrentFilters = useMemo(() => {
+    // First, filter articles by search, favorites, and highlights (but not by tags)
+    const baseFilteredArticles = articles.filter((article) => {
+      const matchesSearch =
+        !searchTerm ||
+        article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        article.url.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesFavorites = !showFavoritesOnly || article.isFavorite
+      const matchesHighlights = !showHighlightsOnly || getHighlightsForArticle(article.url).length > 0
+
+      return matchesSearch && matchesFavorites && matchesHighlights
+    })
+
+    // If no tags are selected, all tags from base filtered articles are available
+    if (selectedTags.length === 0) {
+      const availableTags = new Set<string>()
+      baseFilteredArticles.forEach((article) => {
+        article.parsedTags.forEach((tag) => availableTags.add(tag))
+      })
+      return Array.from(availableTags)
+    }
+
+    // If tags are selected, find which additional tags can be combined with current selection
+    const articlesMatchingCurrentTags = baseFilteredArticles.filter((article) =>
+      selectedTags.every((tag) => article.parsedTags.includes(tag)),
+    )
+
+    const availableTags = new Set<string>()
+    articlesMatchingCurrentTags.forEach((article) => {
+      article.parsedTags.forEach((tag) => availableTags.add(tag))
+    })
+
+    return Array.from(availableTags)
+  }, [articles, searchTerm, showFavoritesOnly, showHighlightsOnly, selectedTags, highlightData])
+
   // Then the filteredArticles useMemo can safely use getHighlightsForArticle
   const filteredArticles = useMemo(() => {
     const filtered = articles.filter((article) => {
@@ -581,17 +618,37 @@ export default function PocketImporter() {
                         </div>
                       )}
                       <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                        {allUniqueTags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant={selectedTags.includes(tag) ? "default" : "outline"}
-                            className="cursor-pointer hover:bg-primary/80"
-                            onClick={() => handleTagToggle(tag)}
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
+                        {allUniqueTags.map((tag) => {
+                          const isSelected = selectedTags.includes(tag)
+                          const isAvailable = availableTagsForCurrentFilters.includes(tag)
+                          const isDisabled = !isSelected && !isAvailable
+
+                          return (
+                            <Badge
+                              key={tag}
+                              variant={isSelected ? "default" : "outline"}
+                              className={`cursor-pointer transition-all ${
+                                isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
+                              }`}
+                              onClick={() => !isDisabled && handleTagToggle(tag)}
+                              title={
+                                isDisabled
+                                  ? "This tag cannot be combined with current filters"
+                                  : isSelected
+                                    ? "Click to remove this tag filter"
+                                    : "Click to add this tag filter"
+                              }
+                            >
+                              {tag}
+                            </Badge>
+                          )
+                        })}
                       </div>
+                      {selectedTags.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Disabled tags cannot be combined with your current selection
+                        </p>
+                      )}
                     </div>
                   </div>
 

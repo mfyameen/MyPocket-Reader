@@ -689,7 +689,15 @@ export default function PocketImporter() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-lg leading-tight">{article.title}</h3>
+                              <a
+                                href={article.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-semibold text-lg leading-tight hover:text-primary transition-colors cursor-pointer"
+                                title="Click to open article in new tab"
+                              >
+                                {article.title}
+                              </a>
                               {article.isFavorite && <Star className="h-5 w-5 text-yellow-500 fill-current" />}
                             </div>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">

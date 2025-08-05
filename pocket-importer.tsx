@@ -32,9 +32,11 @@ import {
   Loader2,
   Edit3,
   Check,
+  Download,
 } from "lucide-react"
 
 import Papa from "papaparse"
+import JSZip from "jszip"
 
 interface Article {
   title: string
@@ -152,6 +154,51 @@ export default function PocketImporter() {
       console.error("Failed to clear cache:", error)
     }
   }, [])
+
+  const downloadCachedData = useCallback(async () => {
+    if (articles.length === 0) return
+
+    try {
+      // Create CSV content from articles
+      const csvHeaders = ["title", "url", "time_added", "tags", "status"]
+      const csvRows = articles.map((article) => [
+        article.title || "",
+        article.url || "",
+        article.time_added.toString(),
+        article.tags || "",
+        article.status || "unread",
+      ])
+
+      const csvContent = Papa.unparse({
+        fields: csvHeaders,
+        data: csvRows,
+      })
+
+      // Create JSON content from highlights (matching original format)
+      const jsonContent = JSON.stringify(highlightData, null, 2)
+
+      // Create ZIP file
+      const zip = new JSZip()
+      zip.file("articles.csv", csvContent)
+      if (highlightData.length > 0) {
+        zip.file("highlights.json", jsonContent)
+      }
+
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: "blob" })
+      const url = URL.createObjectURL(zipBlob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `mypocket-reader-export-${new Date().toISOString().split("T")[0]}.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Failed to download cached data:", error)
+      alert("Failed to download data. Please try again.")
+    }
+  }, [articles, highlightData])
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 Bytes"
@@ -519,10 +566,18 @@ export default function PocketImporter() {
               </div>
             )}
             {!showUploadSection && (
-              <Button onClick={() => setShowUploadSection(true)} variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload
-              </Button>
+              <>
+                <Button onClick={() => setShowUploadSection(true)} variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </Button>
+                {articles.length > 0 && (
+                  <Button onClick={downloadCachedData} variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>

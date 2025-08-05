@@ -28,6 +28,10 @@ import {
   Database,
   Trash2,
   RefreshCw,
+  Heading,
+  Loader2,
+  Edit3,
+  Check,
 } from "lucide-react"
 
 import Papa from "papaparse"
@@ -74,6 +78,9 @@ export default function PocketImporter() {
   const [cacheInfo, setCacheInfo] = useState<{ timestamp: number; size: string } | null>(null)
   const [isLoadingFromCache, setIsLoadingFromCache] = useState(true)
   const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest" | "title-asc" | "title-desc">("default")
+  const [fetchingTitles, setFetchingTitles] = useState<Set<string>>(new Set())
+  const [editingTitle, setEditingTitle] = useState<string | null>(null)
+  const [editTitleValue, setEditTitleValue] = useState("")
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -138,6 +145,9 @@ export default function PocketImporter() {
       setShowHighlightsOnly(false)
       setSortBy("default")
       setCurrentPage(1)
+      setFetchingTitles(new Set())
+      setEditingTitle(null)
+      setEditTitleValue("")
     } catch (error) {
       console.error("Failed to clear cache:", error)
     }
@@ -287,7 +297,57 @@ export default function PocketImporter() {
     return highlightData.find((item) => item.url === url)?.highlights || []
   }
 
-  // Calculate available tags based on current filters (excluding tag filters)
+  // Function to fetch title from URL
+  const fetchTitleFromUrl = useCallback(async (url: string) => {
+    try {
+      // Add URL to fetching set
+      setFetchingTitles((prev) => new Set(prev).add(url))
+
+      // Use a CORS proxy service to fetch the page
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+      const response = await fetch(proxyUrl)
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const html = data.contents
+
+      // Parse HTML to extract title
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, "text/html")
+      const titleElement = doc.querySelector("title")
+      const extractedTitle = titleElement?.textContent?.trim()
+
+      if (extractedTitle && extractedTitle !== url) {
+        // Update the article with the new title
+        setArticles((prevArticles) =>
+          prevArticles.map((article) => (article.url === url ? { ...article, title: extractedTitle } : article)),
+        )
+        return extractedTitle
+      } else {
+        throw new Error("No title found or title is same as URL")
+      }
+    } catch (error) {
+      console.error(`Failed to fetch title for ${url}:`, error)
+      // You could show a toast notification here
+      return null
+    } finally {
+      // Remove URL from fetching set
+      setFetchingTitles((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(url)
+        return newSet
+      })
+    }
+  }, [])
+
+  // Function to check if an article needs a title (title is empty or same as URL)
+  const needsTitle = useCallback((article: Article) => {
+    return !article.title || article.title === article.url || article.title.trim() === ""
+  }, [])
+
   const availableTagsForCurrentFilters = useMemo(() => {
     // First, filter articles by search, favorites, and highlights (but not by tags)
     const baseFilteredArticles = articles.filter((article) => {
@@ -362,6 +422,29 @@ export default function PocketImporter() {
     return filtered
   }, [articles, searchTerm, selectedTags, showFavoritesOnly, showHighlightsOnly, highlightData, sortBy])
 
+  const startEditingTitle = useCallback((url: string, currentTitle: string) => {
+    setEditingTitle(url)
+    setEditTitleValue(currentTitle || url)
+  }, [])
+
+  const saveEditedTitle = useCallback(
+    (url: string) => {
+      if (editTitleValue.trim()) {
+        setArticles((prevArticles) =>
+          prevArticles.map((article) => (article.url === url ? { ...article, title: editTitleValue.trim() } : article)),
+        )
+      }
+      setEditingTitle(null)
+      setEditTitleValue("")
+    },
+    [editTitleValue],
+  )
+
+  const cancelEditingTitle = useCallback(() => {
+    setEditingTitle(null)
+    setEditTitleValue("")
+  }, [])
+
   // Pagination calculations
   const totalPages = Math.ceil(filteredArticles.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -391,7 +474,7 @@ export default function PocketImporter() {
   const stats = {
     totalArticles: articles.length,
     readArticles: articles.filter((a) => a.status === "read").length,
-    unreadArticles: articles.filter((a) => a.status === "unread").length,
+    unreadArticles: articles.filter((a) => a.isFavorite).length,
     favoriteArticles: articles.filter((a) => a.isFavorite).length,
     articlesWithHighlights: highlightData.length,
     totalHighlights: highlightData.reduce((sum, item) => sum + item.highlights.length, 0),
@@ -682,22 +765,73 @@ export default function PocketImporter() {
             <div className="space-y-4">
               {paginatedArticles.map((article, index) => {
                 const highlights = getHighlightsForArticle(article.url)
+                const waybackMachineUrl = `https://web.archive.org/web/${article.url}`
+                const isFetchingTitle = fetchingTitles.has(article.url)
+                const articleNeedsTitle = needsTitle(article)
+
                 return (
-                  <Card key={startIndex + index}>
+                  <Card key={startIndex + index} className="group">
                     <CardContent className="pt-6">
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <a
-                                href={article.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-semibold text-lg leading-tight hover:text-primary transition-colors cursor-pointer"
-                                title="Click to open article in new tab"
-                              >
-                                {article.title}
-                              </a>
+                              {editingTitle === article.url ? (
+                                <div className="flex items-center gap-2 flex-1">
+                                  <Input
+                                    value={editTitleValue}
+                                    onChange={(e) => setEditTitleValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        saveEditedTitle(article.url)
+                                      } else if (e.key === "Escape") {
+                                        cancelEditingTitle()
+                                      }
+                                    }}
+                                    className="flex-1"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => saveEditedTitle(article.url)}
+                                    className="h-8 w-8 p-0"
+                                    title="Save title"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={cancelEditingTitle}
+                                    className="h-8 w-8 p-0"
+                                    title="Cancel editing"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  <a
+                                    href={article.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-lg leading-tight hover:text-primary transition-colors cursor-pointer flex-1"
+                                    title="Click to open article in new tab"
+                                  >
+                                    {article.title || article.url}
+                                  </a>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => startEditingTitle(article.url, article.title)}
+                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Edit title"
+                                  >
+                                    <Edit3 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
                               {article.isFavorite && <Star className="h-5 w-5 text-yellow-500 fill-current" />}
                             </div>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
@@ -715,23 +849,68 @@ export default function PocketImporter() {
                               )}
                             </div>
                           </div>
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={article.url} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" asChild>
+                              <a
+                                href={article.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open original article in new tab"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
+                            <Button variant="outline" size="sm" asChild>
+                              <a
+                                href={waybackMachineUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open article on Wayback Machine"
+                              >
+                                <img
+                                  src="/internet-archive.svg"
+                                  alt="Internet Archive Wayback Machine"
+                                  className="h-4 w-4"
+                                />
+                              </a>
+                            </Button>
+                          </div>
                         </div>
 
-                        {article.parsedTags.length > 0 && (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Tag className="h-4 w-4 text-muted-foreground" />
-                            {article.parsedTags.map((tag, tagIndex) => (
-                              <Badge key={tagIndex} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
+                        {/* Tags and Fetch Title Button Row */}
+                        <div className="flex items-center justify-between">
+                          {/* Tags Section */}
+                          <div className="flex items-center gap-2 flex-wrap flex-1">
+                            {article.parsedTags.length > 0 && (
+                              <>
+                                <Tag className="h-4 w-4 text-muted-foreground" />
+                                {article.parsedTags.map((tag, tagIndex) => (
+                                  <Badge key={tagIndex} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </>
+                            )}
                           </div>
-                        )}
+
+                          {/* Fetch Title Button */}
+                          {articleNeedsTitle && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => fetchTitleFromUrl(article.url)}
+                              disabled={isFetchingTitle}
+                              className="ml-2 h-8 w-8 p-0"
+                              title={isFetchingTitle ? "Fetching title..." : "Fetch title from webpage"}
+                            >
+                              {isFetchingTitle ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Heading className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
 
                         {highlights.length > 0 && (
                           <div>

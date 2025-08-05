@@ -84,6 +84,10 @@ export default function PocketImporter() {
   const [editingTitle, setEditingTitle] = useState<string | null>(null)
   const [editTitleValue, setEditTitleValue] = useState("")
 
+  // New states for inline highlight editing
+  const [addingHighlight, setAddingHighlight] = useState<string | null>(null)
+  const [newHighlightText, setNewHighlightText] = useState("")
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
@@ -150,6 +154,8 @@ export default function PocketImporter() {
       setFetchingTitles(new Set())
       setEditingTitle(null)
       setEditTitleValue("")
+      setAddingHighlight(null)
+      setNewHighlightText("")
     } catch (error) {
       console.error("Failed to clear cache:", error)
     }
@@ -490,6 +496,55 @@ export default function PocketImporter() {
   const cancelEditingTitle = useCallback(() => {
     setEditingTitle(null)
     setEditTitleValue("")
+  }, [])
+
+  // New function to start adding a new highlight
+  const startAddingHighlight = useCallback((url: string) => {
+    setAddingHighlight(url)
+    setNewHighlightText("")
+  }, [])
+
+  // New function to save the new highlight
+  const saveNewHighlight = useCallback(
+    (url: string) => {
+      if (newHighlightText.trim()) {
+        const newHighlight: Highlight = {
+          quote: newHighlightText.trim(),
+          created_at: Math.floor(Date.now() / 1000), // Unix timestamp
+        }
+
+        setHighlightData((prevHighlights) => {
+          const existingArticle = prevHighlights.find((item) => item.url === url)
+
+          if (existingArticle) {
+            // Add to existing article's highlights
+            return prevHighlights.map((item) =>
+              item.url === url ? { ...item, highlights: [...item.highlights, newHighlight] } : item,
+            )
+          } else {
+            // Create new article with highlight
+            const article = articles.find((a) => a.url === url)
+            return [
+              ...prevHighlights,
+              {
+                url,
+                title: article?.title || url,
+                highlights: [newHighlight],
+              },
+            ]
+          }
+        })
+      }
+      setAddingHighlight(null)
+      setNewHighlightText("")
+    },
+    [newHighlightText, articles],
+  )
+
+  // New function to cancel adding a highlight
+  const cancelAddingHighlight = useCallback(() => {
+    setAddingHighlight(null)
+    setNewHighlightText("")
   }, [])
 
   // Pagination calculations
@@ -967,14 +1022,44 @@ export default function PocketImporter() {
                           )}
                         </div>
 
-                        {highlights.length > 0 && (
+                        {/* Add Highlight Button for articles without highlights */}
+                        {highlights.length === 0 && addingHighlight !== article.url && (
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => startAddingHighlight(article.url)}
+                              className="w-full h-8 text-xs text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60"
+                              title="Add your first highlight for this article"
+                            >
+                              <HighlightIcon className="h-3 w-3 mr-2" />
+                              Add Highlight
+                            </Button>
+                          </div>
+                        )}
+
+                        {(highlights.length > 0 || addingHighlight === article.url) && (
                           <div>
                             <Separator />
                             <div className="space-y-2">
-                              <h4 className="font-medium text-sm flex items-center gap-2">
-                                <HighlightIcon className="h-4 w-4" />
-                                Highlights
-                              </h4>
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-sm flex items-center gap-2">
+                                  <HighlightIcon className="h-4 w-4" />
+                                  Highlights
+                                </h4>
+                                {addingHighlight !== article.url && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => startAddingHighlight(article.url)}
+                                    className="h-8 px-2 text-xs"
+                                    title="Add new highlight"
+                                  >
+                                    <HighlightIcon className="h-3 w-3 mr-1" />
+                                    Add
+                                  </Button>
+                                )}
+                              </div>
                               <div className="space-y-2">
                                 {highlights.map((highlight, hIndex) => (
                                   <div key={hIndex} className="bg-muted/50 p-3 rounded-md">
@@ -982,6 +1067,54 @@ export default function PocketImporter() {
                                     <p className="text-xs text-muted-foreground">{formatDate(highlight.created_at)}</p>
                                   </div>
                                 ))}
+
+                                {/* New Highlight Input */}
+                                {addingHighlight === article.url && (
+                                  <div className="bg-muted/30 p-3 rounded-md border-2 border-dashed border-muted-foreground/30">
+                                    <textarea
+                                      value={newHighlightText}
+                                      onChange={(e) => setNewHighlightText(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && e.ctrlKey) {
+                                          saveNewHighlight(article.url)
+                                        } else if (e.key === "Escape") {
+                                          cancelAddingHighlight()
+                                        }
+                                      }}
+                                      placeholder="Enter your highlight text..."
+                                      className="w-full min-h-[60px] p-2 text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                                      autoFocus
+                                    />
+                                    <div className="flex items-center justify-between mt-2">
+                                      <p className="text-xs text-muted-foreground">
+                                        Press Ctrl+Enter to save, Esc to cancel
+                                      </p>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => saveNewHighlight(article.url)}
+                                          disabled={!newHighlightText.trim()}
+                                          className="h-7 px-2 text-xs"
+                                          title="Save highlight"
+                                        >
+                                          <Check className="h-3 w-3 mr-1" />
+                                          Save
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={cancelAddingHighlight}
+                                          className="h-7 px-2 text-xs"
+                                          title="Cancel"
+                                        >
+                                          <X className="h-3 w-3 mr-1" />
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>

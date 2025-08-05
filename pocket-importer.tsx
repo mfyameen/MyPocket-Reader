@@ -1022,7 +1022,18 @@ export default function PocketImporter() {
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t border-border">
           <div className="text-center text-sm text-muted-foreground">
-            Made with AI by{" "}
+            &copy; {new Date().getFullYear()} MyPocket Reader. All rights reserved.
+            <br />
+            Open source and available on{" "}
+            <a
+              href="https://github.com/mfyameen/MyPocket-Reader"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+            >
+              GitHub
+            </a>
+            . Made with AI by{" "}
             <a
               href="https://github.com/mfyameen"
               target="_blank"

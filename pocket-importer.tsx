@@ -996,7 +996,7 @@ export default function PocketImporter() {
                                 title="Open article on Wayback Machine"
                               >
                                 <img
-                                  src="/wayback-machine.png"
+                                  src="/internet-archive.svg"
                                   alt="Internet Archive Wayback Machine"
                                   className="h-4 w-4"
                                 />

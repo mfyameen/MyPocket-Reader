@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Analytics } from "@vercel/analytics/next"
+import { Suspense } from 'react' // Import Suspense
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,7 +27,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <Suspense fallback={null}> {/* Wrap children with Suspense */}
+            {children}
+          </Suspense>
         </ThemeProvider>
         <Analytics />
       </body>

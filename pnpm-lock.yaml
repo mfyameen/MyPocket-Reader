@@ -111,13 +111,13 @@ importers:
         specifier: 8.5.1
         version: 8.5.1(react@19.1.1)
       geist:
-        specifier: ^1.4.2
+        specifier: latest
         version: 1.4.2(next@15.2.4(react-dom@19.1.1(react@19.1.1))(react@19.1.1))
       input-otp:
         specifier: 1.4.1
         version: 1.4.1(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       jszip:
-        specifier: ^3.10.1
+        specifier: latest
         version: 3.10.1
       lucide-react:
         specifier: ^0.454.0

@@ -12,28 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ThemeToggle } from "@/components/theme-toggle"
-import {
-  Upload,
-  FileText,
-  HighlighterIcon as HighlightIcon,
-  Search,
-  Calendar,
-  Tag,
-  ExternalLink,
-  BarChart3,
-  Star,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Database,
-  Trash2,
-  RefreshCw,
-  Heading,
-  Loader2,
-  Edit3,
-  Check,
-  Download,
-} from "lucide-react"
+import { Upload, FileText, HighlighterIcon as HighlightIcon, Search, Calendar, Tag, ExternalLink, BarChart3, Star, X, ChevronLeft, ChevronRight, Database, Trash2, RefreshCw, Heading, Loader2, Edit3, Check, Download } from 'lucide-react'
 
 import Papa from "papaparse"
 import JSZip from "jszip"
@@ -83,6 +62,9 @@ export default function PocketImporter() {
   const [fetchingTitles, setFetchingTitles] = useState<Set<string>>(new Set())
   const [editingTitle, setEditingTitle] = useState<string | null>(null)
   const [editTitleValue, setEditTitleValue] = useState("")
+
+  // Add this after the existing state declarations
+  const [showFilters, setShowFilters] = useState(false)
 
   // New states for inline highlight editing
   const [addingHighlight, setAddingHighlight] = useState<string | null>(null)
@@ -596,43 +578,48 @@ export default function PocketImporter() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold mb-2">MyPocket Reader </h1>
-            <p className="text-muted-foreground">{"RIP Pocket. Import and explore your articles and highlights."} </p>
+            <h1 className="text-2xl lg:text-4xl font-bold mb-2">MyPocket Reader</h1>
+            <p className="text-muted-foreground text-sm lg:text-base">
+              {"RIP Pocket. Import and explore your articles and highlights."}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <ThemeToggle />
             {cacheInfo && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
-                <Database className="h-4 w-4" />
-                <span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground bg-muted/50 px-2 sm:px-3 py-2 rounded-md">
+                <Database className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">
                   Cached: {formatCacheDate(cacheInfo.timestamp)} ({cacheInfo.size})
+                </span>
+                <span className="sm:hidden">
+                  {cacheInfo.size}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={clearCache}
-                  className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
                   title="Clear cached data"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-2 w-2 sm:h-3 sm:w-3" />
                 </Button>
               </div>
             )}
             {!showUploadSection && (
-              <>
-                <Button onClick={() => setShowUploadSection(true)} variant="outline">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload
+              <div className="flex gap-2">
+                <Button onClick={() => setShowUploadSection(true)} variant="outline" size="sm">
+                  <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="text-xs sm:text-sm">Upload</span>
                 </Button>
                 {articles.length > 0 && (
-                  <Button onClick={downloadCachedData} variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
+                  <Button onClick={downloadCachedData} variant="outline" size="sm">
+                    <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="text-xs sm:text-sm">Export</span>
                   </Button>
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -686,34 +673,34 @@ export default function PocketImporter() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
-                  <div className="text-sm text-muted-foreground">Total Articles</div>
+                  <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Total Articles</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
-                  <div className="text-sm text-muted-foreground">Read</div>
+                  <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Read</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
-                  <div className="text-sm text-muted-foreground">Unread</div>
+                  <div className="text-xl sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Unread</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                  <div className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {stats.favoriteArticles}
                   </div>
-                  <div className="text-sm text-muted-foreground">Favorites</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Favorites</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  <div className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {stats.articlesWithHighlights}
                   </div>
-                  <div className="text-sm text-muted-foreground">With Highlights</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">With Highlights</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
-                  <div className="text-sm text-muted-foreground">Total Highlights</div>
+                  <div className="text-xl sm:text-2xl font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Total Highlights</div>
                 </div>
               </div>
             </CardContent>
@@ -727,48 +714,63 @@ export default function PocketImporter() {
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-4">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1">
-                      <Label htmlFor="search">Search Articles</Label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="search"
-                          placeholder="Search by title or URL..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
-                        />
+                  {/* Mobile filter toggle */}
+                  <div className="lg:hidden">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowFilters(!showFilters)}
+                      className="w-full mb-4"
+                    >
+                      <Search className="h-4 w-4 mr-2" />
+                      {showFilters ? 'Hide Filters' : 'Show Filters'}
+                    </Button>
+                  </div>
+
+                  <div className={`space-y-4 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                    <div className="flex flex-col lg:flex-row gap-4">
+                      <div className="flex-1">
+                        <Label htmlFor="search" className="text-sm sm:text-base">Search Articles</Label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="search"
+                            placeholder="Search by title or URL..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 h-10 sm:h-9"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <Label htmlFor="sort-by" className="text-sm sm:text-base">Sort by</Label>
+                        <Select
+                          value={sortBy}
+                          onValueChange={(value: "default" | "newest" | "oldest" | "title-asc" | "title-desc") =>
+                            setSortBy(value)
+                          }
+                        >
+                          <SelectTrigger className="w-full lg:w-40 h-10 sm:h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default">Default Order</SelectItem>
+                            <SelectItem value="newest">Newest First</SelectItem>
+                            <SelectItem value="oldest">Oldest First</SelectItem>
+                            <SelectItem value="title-asc">Title A-Z</SelectItem>
+                            <SelectItem value="title-desc">Title Z-A</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <div className="flex-shrink-0">
-                      <Label htmlFor="sort-by">Sort by</Label>
-                      <Select
-                        value={sortBy}
-                        onValueChange={(value: "default" | "newest" | "oldest" | "title-asc" | "title-desc") =>
-                          setSortBy(value)
-                        }
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Default Order</SelectItem>
-                          <SelectItem value="newest">Newest First</SelectItem>
-                          <SelectItem value="oldest">Oldest First</SelectItem>
-                          <SelectItem value="title-asc">Title A-Z</SelectItem>
-                          <SelectItem value="title-desc">Title Z-A</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-4 pt-6">
+
+                    <div className="flex flex-col sm:flex-row gap-4">
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="favorites-only"
                           checked={showFavoritesOnly}
                           onCheckedChange={(checked) => setShowFavoritesOnly(checked as boolean)}
                         />
-                        <Label htmlFor="favorites-only" className="flex items-center gap-1">
+                        <Label htmlFor="favorites-only" className="flex items-center gap-1 text-sm sm:text-base">
                           <Star className="h-4 w-4" />
                           Favorites
                         </Label>
@@ -779,92 +781,92 @@ export default function PocketImporter() {
                           checked={showHighlightsOnly}
                           onCheckedChange={(checked) => setShowHighlightsOnly(checked as boolean)}
                         />
-                        <Label htmlFor="highlights-only" className="flex items-center gap-1">
+                        <Label htmlFor="highlights-only" className="flex items-center gap-1 text-sm sm:text-base">
                           <HighlightIcon className="h-4 w-4" />
                           Highlights
                         </Label>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Tag Selection */}
-                  <div>
-                    <Label>Filter by Tags</Label>
-                    <div className="mt-2">
-                      {selectedTags.length > 0 && (
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-sm text-muted-foreground">Selected:</span>
-                          {selectedTags.map((tag) => (
-                            <Badge key={tag} variant="default" className="flex items-center gap-1">
-                              {tag}
-                              <button
-                                onClick={() => handleTagToggle(tag)}
-                                className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
+                    {/* Tag Selection */}
+                    <div>
+                      <Label className="text-sm sm:text-base">Filter by Tags</Label>
+                      <div className="mt-2">
+                        {selectedTags.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <span className="text-xs sm:text-sm text-muted-foreground">Selected:</span>
+                            {selectedTags.map((tag) => (
+                              <Badge key={tag} variant="default" className="flex items-center gap-1 text-xs sm:text-sm min-h-[28px] sm:min-h-[24px]">
+                                {tag}
+                                <button
+                                  onClick={() => handleTagToggle(tag)}
+                                  className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                            <Button variant="ghost" size="sm" onClick={clearSelectedTags} className="text-xs sm:text-sm">
+                              Clear All
+                            </Button>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-1 sm:gap-2 max-h-24 sm:max-h-32 overflow-y-auto p-2 border rounded-md">
+                          {allUniqueTags.map((tag) => {
+                            const isSelected = selectedTags.includes(tag)
+                            const isAvailable = availableTagsForCurrentFilters.includes(tag)
+                            const isDisabled = !isSelected && !isAvailable
+
+                            return (
+                              <Badge
+                                key={tag}
+                                variant={isSelected ? "default" : "outline"}
+                                className={`cursor-pointer transition-all text-xs sm:text-sm min-h-[28px] sm:min-h-[24px] ${
+                                  isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
+                                }`}
+                                onClick={() => !isDisabled && handleTagToggle(tag)}
+                                title={
+                                  isDisabled
+                                    ? "This tag cannot be combined with current filters"
+                                    : isSelected
+                                      ? "Click to remove this tag filter"
+                                      : "Click to add this tag filter"
+                                }
                               >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </Badge>
-                          ))}
-                          <Button variant="ghost" size="sm" onClick={clearSelectedTags}>
-                            Clear All
-                          </Button>
+                                {tag}
+                              </Badge>
+                            )
+                          })}
                         </div>
-                      )}
-                      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                        {allUniqueTags.map((tag) => {
-                          const isSelected = selectedTags.includes(tag)
-                          const isAvailable = availableTagsForCurrentFilters.includes(tag)
-                          const isDisabled = !isSelected && !isAvailable
-
-                          return (
-                            <Badge
-                              key={tag}
-                              variant={isSelected ? "default" : "outline"}
-                              className={`cursor-pointer transition-all ${
-                                isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
-                              }`}
-                              onClick={() => !isDisabled && handleTagToggle(tag)}
-                              title={
-                                isDisabled
-                                  ? "This tag cannot be combined with current filters"
-                                  : isSelected
-                                    ? "Click to remove this tag filter"
-                                    : "Click to add this tag filter"
-                              }
-                            >
-                              {tag}
-                            </Badge>
-                          )
-                        })}
+                        {selectedTags.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Disabled tags cannot be combined with your current selection
+                          </p>
+                        )}
                       </div>
-                      {selectedTags.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Disabled tags cannot be combined with your current selection
-                        </p>
-                      )}
                     </div>
-                  </div>
 
-                  {/* Pagination Controls */}
-                  <div className="flex items-center justify-between pt-4 border-t">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="items-per-page">Items per page:</Label>
-                      <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-                        <SelectTrigger className="w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                            <SelectItem key={option} value={option.toString()}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Showing {startIndex + 1}-{Math.min(endIndex, filteredArticles.length)} of{" "}
-                      {filteredArticles.length} articles
+                    {/* Pagination Controls */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="items-per-page" className="text-xs sm:text-sm">Items per page:</Label>
+                        <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                          <SelectTrigger className="w-16 sm:w-20 h-8 sm:h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                              <SelectItem key={option} value={option.toString()}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-right">
+                        Showing {startIndex + 1}-{Math.min(endIndex, filteredArticles.length)} of{" "}
+                        {filteredArticles.length} articles
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -881,11 +883,11 @@ export default function PocketImporter() {
 
                 return (
                   <Card key={startIndex + index} className="group">
-                    <CardContent className="pt-6">
+                    <CardContent className="pt-4 sm:pt-6">
                       <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-start justify-between gap-2 sm:gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-2 mb-2">
                               {editingTitle === article.url ? (
                                 <div className="flex items-center gap-2 flex-1">
                                   <Input
@@ -898,14 +900,14 @@ export default function PocketImporter() {
                                         cancelEditingTitle()
                                       }
                                     }}
-                                    className="flex-1"
+                                    className="flex-1 text-sm sm:text-base"
                                     autoFocus
                                   />
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => saveEditedTitle(article.url)}
-                                    className="h-8 w-8 p-0"
+                                    className="h-8 w-8 p-0 flex-shrink-0"
                                     title="Save title"
                                   >
                                     <Check className="h-4 w-4" />
@@ -914,7 +916,7 @@ export default function PocketImporter() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={cancelEditingTitle}
-                                    className="h-8 w-8 p-0"
+                                    className="h-8 w-8 p-0 flex-shrink-0"
                                     title="Cancel editing"
                                   >
                                     <X className="h-4 w-4" />
@@ -926,7 +928,7 @@ export default function PocketImporter() {
                                     href={article.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="font-semibold text-lg leading-tight hover:text-primary transition-colors cursor-pointer flex-1"
+                                    className="font-semibold text-base sm:text-lg leading-tight hover:text-primary transition-colors cursor-pointer flex-1 min-w-0 break-words"
                                     title="Click to open article in new tab"
                                   >
                                     {article.title || article.url}
@@ -935,32 +937,34 @@ export default function PocketImporter() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => startEditingTitle(article.url, article.title)}
-                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                                     title="Edit title"
                                   >
                                     <Edit3 className="h-4 w-4" />
                                   </Button>
                                 </>
                               )}
-                              {article.isFavorite && <Star className="h-5 w-5 text-yellow-500 fill-current" />}
+                              {article.isFavorite && <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 fill-current flex-shrink-0" />}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground mb-3">
                               <div className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                {formatDate(article.time_added)}
+                                <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm">{formatDate(article.time_added)}</span>
                               </div>
-                              <Badge variant={article.status === "read" ? "default" : "secondary"}>
-                                {article.status}
-                              </Badge>
-                              {highlights.length > 0 && (
-                                <Badge variant="outline" className="text-purple-600 dark:text-purple-400">
-                                  {highlights.length} highlight{highlights.length !== 1 ? "s" : ""}
+                              <div className="flex items-center gap-2">
+                                <Badge variant={article.status === "read" ? "default" : "secondary"} className="text-xs">
+                                  {article.status}
                                 </Badge>
-                              )}
+                                {highlights.length > 0 && (
+                                  <Badge variant="outline" className="text-purple-600 dark:text-purple-400 text-xs">
+                                    {highlights.length} highlight{highlights.length !== 1 ? "s" : ""}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" asChild>
+                          <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                            <Button variant="outline" size="sm" className="h-9 w-9 sm:h-8 sm:w-8 p-0" asChild>
                               <a
                                 href={article.url}
                                 target="_blank"
@@ -970,7 +974,7 @@ export default function PocketImporter() {
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             </Button>
-                            <Button variant="outline" size="sm" asChild>
+                            <Button variant="outline" size="sm" className="h-9 w-9 sm:h-8 sm:w-8 p-0" asChild>
                               <a
                                 href={waybackMachineUrl}
                                 target="_blank"
@@ -988,12 +992,12 @@ export default function PocketImporter() {
                         </div>
 
                         {/* Tags and Fetch Title Button Row */}
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           {/* Tags Section */}
-                          <div className="flex items-center gap-2 flex-wrap flex-1">
+                          <div className="flex items-center gap-1 sm:gap-2 flex-wrap flex-1 min-w-0">
                             {article.parsedTags.length > 0 && (
                               <>
-                                <Tag className="h-4 w-4 text-muted-foreground" />
+                                <Tag className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                                 {article.parsedTags.map((tag, tagIndex) => (
                                   <Badge key={tagIndex} variant="outline" className="text-xs">
                                     {tag}
@@ -1010,7 +1014,7 @@ export default function PocketImporter() {
                               size="sm"
                               onClick={() => fetchTitleFromUrl(article.url)}
                               disabled={isFetchingTitle}
-                              className="ml-2 h-8 w-8 p-0"
+                              className="ml-2 h-8 w-8 p-0 flex-shrink-0"
                               title={isFetchingTitle ? "Fetching title..." : "Fetch title from webpage"}
                             >
                               {isFetchingTitle ? (
@@ -1029,7 +1033,7 @@ export default function PocketImporter() {
                               variant="ghost"
                               size="sm"
                               onClick={() => startAddingHighlight(article.url)}
-                              className="w-full h-8 text-xs text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60"
+                              className="w-full h-10 sm:h-8 text-xs sm:text-sm text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60"
                               title="Add your first highlight for this article"
                             >
                               <HighlightIcon className="h-3 w-3 mr-2" />
@@ -1063,7 +1067,7 @@ export default function PocketImporter() {
                               <div className="space-y-2">
                                 {highlights.map((highlight, hIndex) => (
                                   <div key={hIndex} className="bg-muted/50 p-3 rounded-md">
-                                    <p className="text-sm italic mb-2">"{highlight.quote}"</p>
+                                    <p className="text-sm italic mb-2 break-words">"{highlight.quote}"</p>
                                     <p className="text-xs text-muted-foreground">{formatDate(highlight.created_at)}</p>
                                   </div>
                                 ))}
@@ -1085,7 +1089,7 @@ export default function PocketImporter() {
                                       className="w-full min-h-[60px] p-2 text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                                       autoFocus
                                     />
-                                    <div className="flex items-center justify-between mt-2">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-2">
                                       <p className="text-xs text-muted-foreground">
                                         Press Ctrl+Enter to save, Esc to cancel
                                       </p>
@@ -1136,9 +1140,10 @@ export default function PocketImporter() {
                       size="sm"
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
+                      className="h-9 sm:h-8"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      <span className="hidden sm:inline ml-1">Previous</span>
                     </Button>
 
                     <div className="flex items-center gap-1">
@@ -1160,7 +1165,7 @@ export default function PocketImporter() {
                             variant={currentPage === pageNum ? "default" : "outline"}
                             size="sm"
                             onClick={() => setCurrentPage(pageNum)}
-                            className="w-10"
+                            className="w-9 h-9 sm:w-10 sm:h-8 text-sm"
                           >
                             {pageNum}
                           </Button>
@@ -1173,12 +1178,13 @@ export default function PocketImporter() {
                       size="sm"
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
+                      className="h-9 sm:h-8"
                     >
-                      Next
+                      <span className="hidden sm:inline mr-1">Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="text-center text-sm text-muted-foreground mt-2">
+                  <div className="text-center text-xs sm:text-sm text-muted-foreground mt-2">
                     Page {currentPage} of {totalPages}
                   </div>
                 </CardContent>

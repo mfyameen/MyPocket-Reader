@@ -4,6 +4,8 @@
 
 A modern web application for importing and exploring your Pocket articles and highlights after the service shutdown. This tool helps you preserve and browse your reading history with powerful filtering, search, and organization features.
 
+Try MyPocket Reader now https://v0-pocket-4.vercel.app/
+
 ## Features
 
 - **Import Your Data**: Upload your Pocket CSV exports (articles) and JSON exports (highlights)

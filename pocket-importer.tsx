@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Upload, FileText, HighlighterIcon as HighlightIcon, Search, Calendar, Tag, ExternalLink, BarChart3, Star, X, ChevronLeft, ChevronRight, Database, Trash2, RefreshCw, Heading, Loader2, Edit3, Check, Download } from 'lucide-react'
+import { Upload, FileText, HighlighterIcon as HighlightIcon, Search, Calendar, Tag, ExternalLink, BarChart3, Star, X, ChevronLeft, ChevronRight, Database, Trash2, RefreshCw, Heading, Loader2, Edit3, Check, Download, ChevronDown, ChevronUp, Filter } from 'lucide-react'
 
 import Papa from "papaparse"
 import JSZip from "jszip"
@@ -63,8 +63,9 @@ export default function PocketImporter() {
   const [editingTitle, setEditingTitle] = useState<string | null>(null)
   const [editTitleValue, setEditTitleValue] = useState("")
 
-  // Add this after the existing state declarations
+  // Mobile UI state
   const [showFilters, setShowFilters] = useState(false)
+  const [showStats, setShowStats] = useState(false)
 
   // New states for inline highlight editing
   const [addingHighlight, setAddingHighlight] = useState<string | null>(null)
@@ -558,7 +559,7 @@ export default function PocketImporter() {
   const stats = {
     totalArticles: articles.length,
     readArticles: articles.filter((a) => a.status === "read").length,
-    unreadArticles: articles.filter((a) => a.isFavorite).length,
+    unreadArticles: articles.filter((a) => a.status !== "read").length,
     favoriteArticles: articles.filter((a) => a.isFavorite).length,
     articlesWithHighlights: highlightData.length,
     totalHighlights: highlightData.reduce((sum, item) => sum + item.highlights.length, 0),
@@ -577,15 +578,15 @@ export default function PocketImporter() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 px-4">
-        <div className="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="container mx-auto py-4 sm:py-8 px-4">
+        <div className="mb-6 sm:mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-2xl lg:text-4xl font-bold mb-2">MyPocket Reader</h1>
             <p className="text-muted-foreground text-sm lg:text-base">
               {"RIP Pocket. Import and explore your articles and highlights."}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ThemeToggle />
             {cacheInfo && (
               <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground bg-muted/50 px-2 sm:px-3 py-2 rounded-md">
@@ -608,13 +609,13 @@ export default function PocketImporter() {
               </div>
             )}
             {!showUploadSection && (
-              <div className="flex gap-2">
-                <Button onClick={() => setShowUploadSection(true)} variant="outline" size="sm">
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={() => setShowUploadSection(true)} variant="outline" size="sm" className="flex-1 sm:flex-none">
                   <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   <span className="text-xs sm:text-sm">Upload</span>
                 </Button>
                 {articles.length > 0 && (
-                  <Button onClick={downloadCachedData} variant="outline" size="sm">
+                  <Button onClick={downloadCachedData} variant="outline" size="sm" className="flex-1 sm:flex-none">
                     <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     <span className="text-xs sm:text-sm">Export</span>
                   </Button>
@@ -626,14 +627,14 @@ export default function PocketImporter() {
 
         {/* Upload Section */}
         {showUploadSection && (
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <FileText className="h-5 w-5" />
                   Upload Articles CSV
                 </CardTitle>
-                <CardDescription>Upload your Pocket articles export file</CardDescription>
+                <CardDescription className="text-sm">Upload your Pocket articles export file</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -644,12 +645,12 @@ export default function PocketImporter() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <HighlightIcon className="h-5 w-5" />
                   Upload Highlights JSON
                 </CardTitle>
-                <CardDescription>Upload your Pocket highlights export file (optional)</CardDescription>
+                <CardDescription className="text-sm">Upload your Pocket highlights export file (optional)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -663,43 +664,53 @@ export default function PocketImporter() {
           </div>
         )}
 
-        {/* Stats Section */}
+        {/* Stats Section - Collapsible on Mobile */}
         {articles.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Import Statistics
-              </CardTitle>
+          <Card className="mb-6 sm:mb-8">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <BarChart3 className="h-5 w-5" />
+                  Import Statistics
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowStats(!showStats)}
+                  className="sm:hidden"
+                >
+                  {showStats ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className={`${showStats ? 'block' : 'hidden sm:block'}`}>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Total Articles</div>
+                <div className="text-center p-3 sm:p-0">
+                  <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Total</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
+                <div className="text-center p-3 sm:p-0">
+                  <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Read</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
+                <div className="text-center p-3 sm:p-0">
+                  <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Unread</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                <div className="text-center p-3 sm:p-0">
+                  <div className="text-lg sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {stats.favoriteArticles}
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Favorites</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
+                <div className="text-center p-3 sm:p-0">
+                  <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {stats.articlesWithHighlights}
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">With Highlights</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
+                <div className="text-center p-3 sm:p-0">
+                  <div className="text-lg sm:text-2xl font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Total Highlights</div>
                 </div>
               </div>
@@ -709,47 +720,49 @@ export default function PocketImporter() {
 
         {/* Main Content */}
         {articles.length > 0 && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Search and Filter */}
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 sm:pt-6">
                 <div className="space-y-4">
                   {/* Mobile filter toggle */}
                   <div className="lg:hidden">
                     <Button
                       variant="outline"
                       onClick={() => setShowFilters(!showFilters)}
-                      className="w-full mb-4"
+                      className="w-full mb-4 justify-center"
                     >
-                      <Search className="h-4 w-4 mr-2" />
+                      <Filter className="h-4 w-4 mr-2" />
                       {showFilters ? 'Hide Filters' : 'Show Filters'}
+                      {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
                     </Button>
                   </div>
 
                   <div className={`space-y-4 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                    {/* Search and Sort Row */}
                     <div className="flex flex-col lg:flex-row gap-4">
                       <div className="flex-1">
-                        <Label htmlFor="search" className="text-sm sm:text-base">Search Articles</Label>
+                        <Label htmlFor="search" className="text-sm font-medium mb-2 block">Search Articles</Label>
                         <div className="relative">
-                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="search"
                             placeholder="Search by title or URL..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 h-10 sm:h-9"
+                            className="pl-10 h-11 sm:h-10"
                           />
                         </div>
                       </div>
-                      <div className="flex-shrink-0">
-                        <Label htmlFor="sort-by" className="text-sm sm:text-base">Sort by</Label>
+                      <div className="w-full lg:w-48">
+                        <Label htmlFor="sort-by" className="text-sm font-medium mb-2 block">Sort by</Label>
                         <Select
                           value={sortBy}
                           onValueChange={(value: "default" | "newest" | "oldest" | "title-asc" | "title-desc") =>
                             setSortBy(value)
                           }
                         >
-                          <SelectTrigger className="w-full lg:w-40 h-10 sm:h-9">
+                          <SelectTrigger className="h-11 sm:h-10">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -763,83 +776,94 @@ export default function PocketImporter() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="favorites-only"
-                          checked={showFavoritesOnly}
-                          onCheckedChange={(checked) => setShowFavoritesOnly(checked as boolean)}
-                        />
-                        <Label htmlFor="favorites-only" className="flex items-center gap-1 text-sm sm:text-base">
-                          <Star className="h-4 w-4" />
-                          Favorites
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="highlights-only"
-                          checked={showHighlightsOnly}
-                          onCheckedChange={(checked) => setShowHighlightsOnly(checked as boolean)}
-                        />
-                        <Label htmlFor="highlights-only" className="flex items-center gap-1 text-sm sm:text-base">
-                          <HighlightIcon className="h-4 w-4" />
-                          Highlights
-                        </Label>
+                    {/* Quick Filters */}
+                    <div className="bg-muted/30 p-4 rounded-lg">
+                      <Label className="text-sm font-medium mb-3 block">Quick Filters</Label>
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            id="favorites-only"
+                            checked={showFavoritesOnly}
+                            onCheckedChange={(checked) => setShowFavoritesOnly(checked as boolean)}
+                          />
+                          <Label htmlFor="favorites-only" className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                            <Star className="h-4 w-4 text-yellow-500" />
+                            Show Favorites Only
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            id="highlights-only"
+                            checked={showHighlightsOnly}
+                            onCheckedChange={(checked) => setShowHighlightsOnly(checked as boolean)}
+                          />
+                          <Label htmlFor="highlights-only" className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                            <HighlightIcon className="h-4 w-4 text-purple-500" />
+                            Show With Highlights Only
+                          </Label>
+                        </div>
                       </div>
                     </div>
 
                     {/* Tag Selection */}
                     <div>
-                      <Label className="text-sm sm:text-base">Filter by Tags</Label>
-                      <div className="mt-2">
+                      <Label className="text-sm font-medium mb-3 block">Filter by Tags</Label>
+                      <div className="space-y-3">
                         {selectedTags.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-2 mb-3">
-                            <span className="text-xs sm:text-sm text-muted-foreground">Selected:</span>
-                            {selectedTags.map((tag) => (
-                              <Badge key={tag} variant="default" className="flex items-center gap-1 text-xs sm:text-sm min-h-[28px] sm:min-h-[24px]">
-                                {tag}
-                                <button
-                                  onClick={() => handleTagToggle(tag)}
-                                  className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </Badge>
-                            ))}
-                            <Button variant="ghost" size="sm" onClick={clearSelectedTags} className="text-xs sm:text-sm">
-                              Clear All
+                          <div className="bg-primary/5 p-3 rounded-lg">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <span className="text-xs font-medium text-muted-foreground">Selected Tags:</span>
+                              {selectedTags.map((tag) => (
+                                <Badge key={tag} variant="default" className="flex items-center gap-1 text-xs">
+                                  {tag}
+                                  <button
+                                    onClick={() => handleTagToggle(tag)}
+                                    className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={clearSelectedTags} className="text-xs h-7">
+                              Clear All Tags
                             </Button>
                           </div>
                         )}
-                        <div className="flex flex-wrap gap-1 sm:gap-2 max-h-24 sm:max-h-32 overflow-y-auto p-2 border rounded-md">
-                          {allUniqueTags.map((tag) => {
-                            const isSelected = selectedTags.includes(tag)
-                            const isAvailable = availableTagsForCurrentFilters.includes(tag)
-                            const isDisabled = !isSelected && !isAvailable
+                        <div className="bg-muted/30 p-3 rounded-lg max-h-32 overflow-y-auto">
+                          <div className="flex flex-wrap gap-2">
+                            {allUniqueTags.map((tag) => {
+                              const isSelected = selectedTags.includes(tag)
+                              const isAvailable = availableTagsForCurrentFilters.includes(tag)
+                              const isDisabled = !isSelected && !isAvailable
 
-                            return (
-                              <Badge
-                                key={tag}
-                                variant={isSelected ? "default" : "outline"}
-                                className={`cursor-pointer transition-all text-xs sm:text-sm min-h-[28px] sm:min-h-[24px] ${
-                                  isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
-                                }`}
-                                onClick={() => !isDisabled && handleTagToggle(tag)}
-                                title={
-                                  isDisabled
-                                    ? "This tag cannot be combined with current filters"
-                                    : isSelected
-                                      ? "Click to remove this tag filter"
-                                      : "Click to add this tag filter"
-                                }
-                              >
-                                {tag}
-                              </Badge>
-                            )
-                          })}
+                              return (
+                                <Badge
+                                  key={tag}
+                                  variant={isSelected ? "default" : "outline"}
+                                  className={`cursor-pointer transition-all text-xs ${
+                                    isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
+                                  }`}
+                                  onClick={() => !isDisabled && handleTagToggle(tag)}
+                                  title={
+                                    isDisabled
+                                      ? "This tag cannot be combined with current filters"
+                                      : isSelected
+                                        ? "Click to remove this tag filter"
+                                        : "Click to add this tag filter"
+                                  }
+                                >
+                                  {tag}
+                                </Badge>
+                              )
+                            })}
+                          </div>
+                          {allUniqueTags.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">No tags available</p>
+                          )}
                         </div>
                         {selectedTags.length > 0 && (
-                          <p className="text-xs text-muted-foreground mt-2">
+                          <p className="text-xs text-muted-foreground">
                             Disabled tags cannot be combined with your current selection
                           </p>
                         )}
@@ -849,9 +873,9 @@ export default function PocketImporter() {
                     {/* Pagination Controls */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t gap-4">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="items-per-page" className="text-xs sm:text-sm">Items per page:</Label>
+                        <Label htmlFor="items-per-page" className="text-xs font-medium">Items per page:</Label>
                         <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-                          <SelectTrigger className="w-16 sm:w-20 h-8 sm:h-9">
+                          <SelectTrigger className="w-20 h-9">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -863,7 +887,7 @@ export default function PocketImporter() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-right">
+                      <div className="text-xs text-muted-foreground text-center sm:text-right">
                         Showing {startIndex + 1}-{Math.min(endIndex, filteredArticles.length)} of{" "}
                         {filteredArticles.length} articles
                       </div>
@@ -874,7 +898,7 @@ export default function PocketImporter() {
             </Card>
 
             {/* Articles List */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {paginatedArticles.map((article, index) => {
                 const highlights = getHighlightsForArticle(article.url)
                 const waybackMachineUrl = `https://web.archive.org/web/${article.url}`
@@ -883,11 +907,11 @@ export default function PocketImporter() {
 
                 return (
                   <Card key={startIndex + index} className="group">
-                    <CardContent className="pt-4 sm:pt-6">
-                      <div className="space-y-3">
+                    <CardContent className="pt-3 pb-3 sm:pt-6 sm:pb-6">
+                      <div className="space-y-2 sm:space-y-3">
                         <div className="flex items-start justify-between gap-2 sm:gap-4">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start gap-2 mb-2">
+                            <div className="flex items-start gap-2 mb-1 sm:mb-2">
                               {editingTitle === article.url ? (
                                 <div className="flex items-center gap-2 flex-1">
                                   <Input
@@ -928,7 +952,7 @@ export default function PocketImporter() {
                                     href={article.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="font-semibold text-base sm:text-lg leading-tight hover:text-primary transition-colors cursor-pointer flex-1 min-w-0 break-words"
+                                    className="font-semibold text-sm sm:text-lg leading-tight hover:text-primary transition-colors cursor-pointer flex-1 min-w-0 break-words"
                                     title="Click to open article in new tab"
                                   >
                                     {article.title || article.url}
@@ -937,26 +961,26 @@ export default function PocketImporter() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => startEditingTitle(article.url, article.title)}
-                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                    className="h-7 w-7 sm:h-8 sm:w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                                     title="Edit title"
                                   >
-                                    <Edit3 className="h-4 w-4" />
+                                    <Edit3 className="h-3 w-3 sm:h-4 sm:w-4" />
                                   </Button>
                                 </>
                               )}
                               {article.isFavorite && <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 fill-current flex-shrink-0" />}
                             </div>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground mb-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="text-xs sm:text-sm">{formatDate(article.time_added)}</span>
+                                <span>{formatDate(article.time_added)}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant={article.status === "read" ? "default" : "secondary"} className="text-xs">
+                                <Badge variant={article.status === "read" ? "default" : "secondary"} className="text-xs h-5">
                                   {article.status}
                                 </Badge>
                                 {highlights.length > 0 && (
-                                  <Badge variant="outline" className="text-purple-600 dark:text-purple-400 text-xs">
+                                  <Badge variant="outline" className="text-purple-600 dark:text-purple-400 text-xs h-5">
                                     {highlights.length} highlight{highlights.length !== 1 ? "s" : ""}
                                   </Badge>
                                 )}
@@ -964,17 +988,7 @@ export default function PocketImporter() {
                             </div>
                           </div>
                           <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-                            <Button variant="outline" size="sm" className="h-9 w-9 sm:h-8 sm:w-8 p-0" asChild>
-                              <a
-                                href={article.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Open original article in new tab"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-9 w-9 sm:h-8 sm:w-8 p-0" asChild>
+                            <Button variant="outline" size="sm" className="h-8 w-8 sm:h-8 sm:w-8 p-0 text-muted-foreground hover:text-foreground" asChild>
                               <a
                                 href={waybackMachineUrl}
                                 target="_blank"
@@ -982,7 +996,7 @@ export default function PocketImporter() {
                                 title="Open article on Wayback Machine"
                               >
                                 <img
-                                  src="/internet-archive.svg"
+                                  src="/wayback-machine.png"
                                   alt="Internet Archive Wayback Machine"
                                   className="h-4 w-4"
                                 />
@@ -999,7 +1013,7 @@ export default function PocketImporter() {
                               <>
                                 <Tag className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                                 {article.parsedTags.map((tag, tagIndex) => (
-                                  <Badge key={tagIndex} variant="outline" className="text-xs">
+                                  <Badge key={tagIndex} variant="outline" className="text-xs h-5">
                                     {tag}
                                   </Badge>
                                 ))}
@@ -1014,13 +1028,13 @@ export default function PocketImporter() {
                               size="sm"
                               onClick={() => fetchTitleFromUrl(article.url)}
                               disabled={isFetchingTitle}
-                              className="ml-2 h-8 w-8 p-0 flex-shrink-0"
+                              className="ml-2 h-7 w-7 sm:h-8 sm:w-8 p-0 flex-shrink-0"
                               title={isFetchingTitle ? "Fetching title..." : "Fetch title from webpage"}
                             >
                               {isFetchingTitle ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                               ) : (
-                                <Heading className="h-4 w-4" />
+                                <Heading className="h-3 w-3 sm:h-4 sm:w-4" />
                               )}
                             </Button>
                           )}
@@ -1033,7 +1047,7 @@ export default function PocketImporter() {
                               variant="ghost"
                               size="sm"
                               onClick={() => startAddingHighlight(article.url)}
-                              className="w-full h-10 sm:h-8 text-xs sm:text-sm text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60"
+                              className="w-full h-8 sm:h-8 text-xs sm:text-sm text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60"
                               title="Add your first highlight for this article"
                             >
                               <HighlightIcon className="h-3 w-3 mr-2" />
@@ -1045,7 +1059,7 @@ export default function PocketImporter() {
                         {(highlights.length > 0 || addingHighlight === article.url) && (
                           <div>
                             <Separator />
-                            <div className="space-y-2">
+                            <div className="space-y-2 pt-2">
                               <div className="flex items-center justify-between">
                                 <h4 className="font-medium text-sm flex items-center gap-2">
                                   <HighlightIcon className="h-4 w-4" />
@@ -1056,7 +1070,7 @@ export default function PocketImporter() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => startAddingHighlight(article.url)}
-                                    className="h-8 px-2 text-xs"
+                                    className="h-7 px-2 text-xs"
                                     title="Add new highlight"
                                   >
                                     <HighlightIcon className="h-3 w-3 mr-1" />
@@ -1066,15 +1080,15 @@ export default function PocketImporter() {
                               </div>
                               <div className="space-y-2">
                                 {highlights.map((highlight, hIndex) => (
-                                  <div key={hIndex} className="bg-muted/50 p-3 rounded-md">
-                                    <p className="text-sm italic mb-2 break-words">"{highlight.quote}"</p>
+                                  <div key={hIndex} className="bg-muted/50 p-2 sm:p-3 rounded-md">
+                                    <p className="text-xs sm:text-sm italic mb-1 sm:mb-2 break-words">"{highlight.quote}"</p>
                                     <p className="text-xs text-muted-foreground">{formatDate(highlight.created_at)}</p>
                                   </div>
                                 ))}
 
                                 {/* New Highlight Input */}
                                 {addingHighlight === article.url && (
-                                  <div className="bg-muted/30 p-3 rounded-md border-2 border-dashed border-muted-foreground/30">
+                                  <div className="bg-muted/30 p-2 sm:p-3 rounded-md border-2 border-dashed border-muted-foreground/30">
                                     <textarea
                                       value={newHighlightText}
                                       onChange={(e) => setNewHighlightText(e.target.value)}
@@ -1086,7 +1100,7 @@ export default function PocketImporter() {
                                         }
                                       }}
                                       placeholder="Enter your highlight text..."
-                                      className="w-full min-h-[60px] p-2 text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                                      className="w-full min-h-[50px] sm:min-h-[60px] p-2 text-xs sm:text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                                       autoFocus
                                     />
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-2">
@@ -1099,7 +1113,7 @@ export default function PocketImporter() {
                                           size="sm"
                                           onClick={() => saveNewHighlight(article.url)}
                                           disabled={!newHighlightText.trim()}
-                                          className="h-7 px-2 text-xs"
+                                          className="h-6 px-2 text-xs"
                                           title="Save highlight"
                                         >
                                           <Check className="h-3 w-3 mr-1" />
@@ -1109,7 +1123,7 @@ export default function PocketImporter() {
                                           variant="ghost"
                                           size="sm"
                                           onClick={cancelAddingHighlight}
-                                          className="h-7 px-2 text-xs"
+                                          className="h-6 px-2 text-xs"
                                           title="Cancel"
                                         >
                                           <X className="h-3 w-3 mr-1" />
@@ -1214,7 +1228,7 @@ export default function PocketImporter() {
         )}
 
         {/* Footer */}
-        <footer className="mt-16 pt-8 border-t border-border">
+        <footer className="mt-12 sm:mt-16 pt-6 sm:pt-8 border-t border-border">
           <div className="text-center text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} MyPocket Reader. All rights reserved.
             <br />

@@ -1,10 +1,8 @@
 # MyPocket Reader
 
-![MyPocket Reader](https://v0-pocket-4.vercel.app/)
-
 A modern web application for importing and exploring your Pocket articles and highlights after the service shutdown. This tool helps you preserve and browse your reading history with powerful filtering, search, and organization features.
 
-Try MyPocket Reader now https://v0-pocket-4.vercel.app/
+Try MyPocket Reader now https://mypocketreader.vercel.app/
 
 ## Features
 
@@ -28,6 +26,6 @@ Try MyPocket Reader now https://v0-pocket-4.vercel.app/
 ### Option 2: Manual Installation
 
 1. Clone the repository:
-   ```bash
+   \`\`\`bash
    git clone https://github.com/yourusername/mypocket-reader.git
    cd mypocket-reader

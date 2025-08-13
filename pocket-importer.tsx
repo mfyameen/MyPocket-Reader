@@ -882,12 +882,12 @@ export default function PocketImporter() {
                   <BarChart3 className="h-5 w-5" />
                   Import Statistics
                 </CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setShowStats(!showStats)} className="sm:hidden">
+                <Button variant="ghost" size="sm" onClick={() => setShowStats(!showStats)}>
                   {showStats ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className={`${showStats ? "block" : "hidden sm:block"}`}>
+            <CardContent className={`${showStats ? "block" : "hidden"}`}>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
                 <div className="text-center p-3 sm:p-0">
                   <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -935,191 +935,182 @@ export default function PocketImporter() {
           <div className="space-y-4 sm:space-y-6">
             {/* Search and Filter */}
             <Card>
-              <CardContent className="pt-4 sm:pt-6">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Filter className="h-5 w-5" />
+                    Search & Filters
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowFilters(!showFilters)}>
+                    {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className={`${showFilters ? "block" : "hidden"}`}>
                 <div className="space-y-4">
-                  {/* Mobile filter toggle */}
-                  <div className="lg:hidden">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowFilters(!showFilters)}
-                      className="w-full mb-4 justify-center"
-                    >
-                      <Filter className="h-4 w-4 mr-2" />
-                      {showFilters ? "Hide Filters" : "Show Filters"}
-                      {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
-                    </Button>
+                  {/* Search and Sort Row */}
+                  <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="search" className="text-sm font-medium mb-2 block">
+                        Search Articles
+                      </Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="search"
+                          placeholder="Search by title or URL..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 h-11 sm:h-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="w-full lg:w-48">
+                      <Label htmlFor="sort-by" className="text-sm font-medium mb-2 block">
+                        Sort by
+                      </Label>
+                      <Select
+                        value={sortBy}
+                        onValueChange={(value: "default" | "newest" | "oldest" | "title-asc" | "title-desc") =>
+                          setSortBy(value)
+                        }
+                      >
+                        <SelectTrigger className="h-11 sm:h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Default Order</SelectItem>
+                          <SelectItem value="newest">Newest First</SelectItem>
+                          <SelectItem value="oldest">Oldest First</SelectItem>
+                          <SelectItem value="title-asc">Title A-Z</SelectItem>
+                          <SelectItem value="title-desc">Title Z-A</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className={`space-y-4 ${showFilters ? "block" : "hidden lg:block"}`}>
-                    {/* Search and Sort Row */}
-                    <div className="flex flex-col lg:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="search" className="text-sm font-medium mb-2 block">
-                          Search Articles
-                        </Label>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="search"
-                            placeholder="Search by title or URL..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 h-11 sm:h-10"
-                          />
-                        </div>
-                      </div>
-                      <div className="w-full lg:w-48">
-                        <Label htmlFor="sort-by" className="text-sm font-medium mb-2 block">
-                          Sort by
-                        </Label>
-                        <Select
-                          value={sortBy}
-                          onValueChange={(value: "default" | "newest" | "oldest" | "title-asc" | "title-desc") =>
-                            setSortBy(value)
-                          }
+                  {/* Quick Filters */}
+                  <div className="bg-muted/30 p-4 rounded-lg">
+                    <Label className="text-sm font-medium mb-3 block">Quick Filters</Label>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="favorites-only"
+                          checked={showFavoritesOnly}
+                          onCheckedChange={(checked) => setShowFavoritesOnly(checked as boolean)}
+                        />
+                        <Label
+                          htmlFor="favorites-only"
+                          className="flex items-center gap-2 text-sm font-normal cursor-pointer"
                         >
-                          <SelectTrigger className="h-11 sm:h-10">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="default">Default Order</SelectItem>
-                            <SelectItem value="newest">Newest First</SelectItem>
-                            <SelectItem value="oldest">Oldest First</SelectItem>
-                            <SelectItem value="title-asc">Title A-Z</SelectItem>
-                            <SelectItem value="title-desc">Title Z-A</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <Star className="h-4 w-4 text-yellow-500" />
+                          Show Favorites Only
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="highlights-only"
+                          checked={showHighlightsOnly}
+                          onCheckedChange={(checked) => setShowHighlightsOnly(checked as boolean)}
+                        />
+                        <Label
+                          htmlFor="highlights-only"
+                          className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                        >
+                          <HighlightIcon className="h-4 w-4 text-purple-500" />
+                          Show With Highlights Only
+                        </Label>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Quick Filters */}
-                    <div className="bg-muted/30 p-4 rounded-lg">
-                      <Label className="text-sm font-medium mb-3 block">Quick Filters</Label>
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            id="favorites-only"
-                            checked={showFavoritesOnly}
-                            onCheckedChange={(checked) => setShowFavoritesOnly(checked as boolean)}
-                          />
-                          <Label
-                            htmlFor="favorites-only"
-                            className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                          >
-                            <Star className="h-4 w-4 text-yellow-500" />
-                            Show Favorites Only
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            id="highlights-only"
-                            checked={showHighlightsOnly}
-                            onCheckedChange={(checked) => setShowHighlightsOnly(checked as boolean)}
-                          />
-                          <Label
-                            htmlFor="highlights-only"
-                            className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                          >
-                            <HighlightIcon className="h-4 w-4 text-purple-500" />
-                            Show With Highlights Only
-                          </Label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tag Selection */}
-                    <div>
-                      <Label className="text-sm font-medium mb-3 block">Filter by Tags</Label>
-                      <div className="space-y-3">
-                        {selectedTags.length > 0 && (
-                          <div className="bg-primary/5 p-3 rounded-lg">
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <span className="text-xs font-medium text-muted-foreground">Selected Tags:</span>
-                              {selectedTags.map((tag) => (
-                                <Badge key={tag} variant="default" className="flex items-center gap-1 text-xs">
-                                  {tag}
-                                  <button
-                                    onClick={() => handleTagToggle(tag)}
-                                    className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={clearSelectedTags} className="text-xs h-7">
-                              Clear All Tags
-                            </Button>
-                          </div>
-                        )}
-                        <div className="bg-muted/30 p-3 rounded-lg max-h-32 overflow-y-auto">
-                          <div className="flex flex-wrap gap-2">
-                            {allUniqueTags.map((tag) => {
-                              const isSelected = selectedTags.includes(tag)
-                              const isAvailable = availableTagsForCurrentFilters.includes(tag)
-                              const isDisabled = !isSelected && !isAvailable
-
-                              return (
-                                <Badge
-                                  key={tag}
-                                  variant={isSelected ? "default" : "outline"}
-                                  className={`cursor-pointer transition-all text-xs ${
-                                    isDisabled
-                                      ? "opacity-40 cursor-not-allowed hover:opacity-40"
-                                      : "hover:bg-primary/80"
-                                  }`}
-                                  onClick={() => !isDisabled && handleTagToggle(tag)}
-                                  title={
-                                    isDisabled
-                                      ? "This tag cannot be combined with current filters"
-                                      : isSelected
-                                        ? "Click to remove this tag filter"
-                                        : "Click to add this tag filter"
-                                  }
+                  {/* Tag Selection */}
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Filter by Tags</Label>
+                    <div className="space-y-3">
+                      {selectedTags.length > 0 && (
+                        <div className="bg-primary/5 p-3 rounded-lg">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span className="text-xs font-medium text-muted-foreground">Selected Tags:</span>
+                            {selectedTags.map((tag) => (
+                              <Badge key={tag} variant="default" className="flex items-center gap-1 text-xs">
+                                {tag}
+                                <button
+                                  onClick={() => handleTagToggle(tag)}
+                                  className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
                                 >
-                                  {tag}
-                                </Badge>
-                              )
-                            })}
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
                           </div>
-                          {allUniqueTags.length === 0 && (
-                            <p className="text-xs text-muted-foreground text-center py-2">No tags available</p>
-                          )}
+                          <Button variant="ghost" size="sm" onClick={clearSelectedTags} className="text-xs h-7">
+                            Clear All Tags
+                          </Button>
                         </div>
-                        {selectedTags.length > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Disabled tags cannot be combined with your current selection
-                          </p>
+                      )}
+                      <div className="bg-muted/30 p-3 rounded-lg max-h-32 overflow-y-auto">
+                        <div className="flex flex-wrap gap-2">
+                          {allUniqueTags.map((tag) => {
+                            const isSelected = selectedTags.includes(tag)
+                            const isAvailable = availableTagsForCurrentFilters.includes(tag)
+                            const isDisabled = !isSelected && !isAvailable
+
+                            return (
+                              <Badge
+                                key={tag}
+                                variant={isSelected ? "default" : "outline"}
+                                className={`cursor-pointer transition-all text-xs ${
+                                  isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
+                                }`}
+                                onClick={() => !isDisabled && handleTagToggle(tag)}
+                                title={
+                                  isDisabled
+                                    ? "This tag cannot be combined with current filters"
+                                    : isSelected
+                                      ? "Click to remove this tag filter"
+                                      : "Click to add this tag filter"
+                                }
+                              >
+                                {tag}
+                              </Badge>
+                            )
+                          })}
+                        </div>
+                        {allUniqueTags.length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-2">No tags available</p>
                         )}
                       </div>
+                      {selectedTags.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Disabled tags cannot be combined with your current selection
+                        </p>
+                      )}
                     </div>
+                  </div>
 
-                    {/* Pagination Controls */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t gap-4">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="items-per-page" className="text-xs font-medium">
-                          Items per page:
-                        </Label>
-                        <Select
-                          value={itemsPerPage.toString()}
-                          onValueChange={(value) => setItemsPerPage(Number(value))}
-                        >
-                          <SelectTrigger className="w-20 h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                              <SelectItem key={option} value={option.toString()}>
-                                {option}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="text-xs text-muted-foreground text-center sm:text-right">
-                        Showing {startIndex + 1}-{Math.min(endIndex, filteredArticles.length)} of{" "}
-                        {filteredArticles.length} articles
-                      </div>
+                  {/* Pagination Controls */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t gap-4">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="items-per-page" className="text-xs font-medium">
+                        Items per page:
+                      </Label>
+                      <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                        <SelectTrigger className="w-20 h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                            <SelectItem key={option} value={option.toString()}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="text-xs text-muted-foreground text-center sm:text-right">
+                      Showing {startIndex + 1}-{Math.min(endIndex, filteredArticles.length)} of{" "}
+                      {filteredArticles.length} articles
                     </div>
                   </div>
                 </div>

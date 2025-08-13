@@ -116,6 +116,11 @@ export default function PocketImporter() {
   const [newArticleIsFavorite, setNewArticleIsFavorite] = useState(false)
   const [addingArticle, setAddingArticle] = useState(false)
 
+  // New state for cache menu visibility
+  const [showCacheMenu, setShowCacheMenu] = useState(false)
+  // Add confirmation dialog state
+  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false)
+
   // Cache management functions
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
     try {
@@ -163,6 +168,11 @@ export default function PocketImporter() {
   }, [])
 
   const clearCache = useCallback(() => {
+    if (!showClearCacheConfirm) {
+      setShowClearCacheConfirm(true)
+      return
+    }
+
     try {
       localStorage.removeItem(CACHE_KEY)
       setArticles([])
@@ -187,10 +197,12 @@ export default function PocketImporter() {
       setNewArticleTitle("")
       setNewArticleTags("")
       setNewArticleIsFavorite(false)
+      setShowCacheMenu(false)
+      setShowClearCacheConfirm(false)
     } catch (error) {
       console.error("Failed to clear cache:", error)
     }
-  }, [])
+  }, [showClearCacheConfirm])
 
   const downloadCachedData = useCallback(async () => {
     if (articles.length === 0) return
@@ -824,44 +836,112 @@ export default function PocketImporter() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            {/* Left side - Theme toggle, cache info, upload/export buttons */}
+            {/* Left side - Theme toggle and cache icon */}
             <div className="flex flex-wrap items-center gap-2">
               <ThemeToggle />
               {cacheInfo && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground bg-muted/50 px-2 sm:px-3 py-2 rounded-md">
-                  <Database className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">
-                    Cached: {formatCacheDate(cacheInfo.timestamp)} ({cacheInfo.size})
-                  </span>
-                  <span className="sm:hidden">{cacheInfo.size}</span>
+                <div className="relative">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={clearCache}
-                    className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
-                    title="Clear cached data"
+                    onClick={() => setShowCacheMenu(!showCacheMenu)}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                    title={`Cached: ${formatCacheDate(cacheInfo.timestamp)} (${cacheInfo.size})`}
                   >
-                    <Trash2 className="h-2 w-2 sm:h-3 sm:w-3" />
+                    <Database className="h-4 w-4" />
                   </Button>
+
+                  {/* Cache menu dropdown */}
+                  {showCacheMenu && (
+                    <div className="absolute top-full right-0 mt-2 bg-background border border-border rounded-md shadow-lg p-3 min-w-64 z-50">
+                      <div className="space-y-3">
+                        <div className="text-xs text-muted-foreground">
+                          <div className="font-medium mb-1">Cache Information</div>
+                          <div>Cached: {formatCacheDate(cacheInfo.timestamp)}</div>
+                          <div>Size: {cacheInfo.size}</div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            onClick={() => {
+                              setShowUploadSection(true)
+                              setShowCacheMenu(false)
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                          >
+                            <Upload className="h-3 w-3 mr-2" />
+                            Upload
+                          </Button>
+
+                          {articles.length > 0 && (
+                            <Button
+                              onClick={() => {
+                                downloadCachedData()
+                                setShowCacheMenu(false)
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-start"
+                            >
+                              <Download className="h-3 w-3 mr-2" />
+                              Export
+                            </Button>
+                          )}
+
+                          {showClearCacheConfirm ? (
+                            <div className="space-y-2">
+                              <div className="text-xs text-muted-foreground text-center">
+                                Are you sure? This will delete all cached data.
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={clearCache}
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10 bg-transparent"
+                                >
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Yes, Clear
+                                </Button>
+                                <Button
+                                  onClick={() => setShowClearCacheConfirm(false)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              onClick={clearCache}
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 bg-transparent"
+                            >
+                              <Trash2 className="h-3 w-3 mr-2" />
+                              Clear Cache
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-              {!showUploadSection && (
+
+              {/* Show upload/export buttons when no cache or upload section is visible */}
+              {!cacheInfo && !showUploadSection && (
                 <div className="flex gap-2">
-                  <Button
-                    onClick={() => setShowUploadSection(true)}
-                    variant="outline"
-                    size="sm"
-                  >
+                  <Button onClick={() => setShowUploadSection(true)} variant="outline" size="sm">
                     <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     <span className="text-xs sm:text-sm">Upload</span>
                   </Button>
                   {articles.length > 0 && (
-                    <Button
-                      onClick={downloadCachedData}
-                      variant="outline"
-                      size="sm"
-                      className="bg-transparent"
-                    >
+                    <Button onClick={downloadCachedData} variant="outline" size="sm" className="bg-transparent">
                       <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       <span className="text-xs sm:text-sm">Export</span>
                     </Button>
@@ -873,12 +953,7 @@ export default function PocketImporter() {
             {/* Right side - Add Article button */}
             {!showUploadSection && articles.length > 0 && (
               <div className="flex justify-end sm:ml-auto">
-                <Button
-                  onClick={startAddingArticle}
-                  variant="outline"
-                  size="sm"
-                  className="bg-transparent"
-                >
+                <Button onClick={startAddingArticle} variant="outline" size="sm" className="bg-transparent">
                   <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   <span className="text-xs sm:text-sm">Add Article</span>
                 </Button>
@@ -1844,6 +1919,17 @@ export default function PocketImporter() {
             </a>
           </div>
         </footer>
+
+        {/* Click outside to close cache menu */}
+        {showCacheMenu && (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => {
+              setShowCacheMenu(false)
+              setShowClearCacheConfirm(false)
+            }}
+          />
+        )}
       </div>
     </div>
   )

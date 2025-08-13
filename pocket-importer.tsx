@@ -835,7 +835,7 @@ export default function PocketImporter() {
               {"RIP Pocket. Import and explore your articles and highlights."}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Left side - Theme toggle and cache icon */}
             <div className="flex flex-wrap items-center gap-2">
               <ThemeToggle />
@@ -853,7 +853,7 @@ export default function PocketImporter() {
 
                   {/* Cache menu dropdown */}
                   {showCacheMenu && (
-                    <div className="absolute top-full right-0 mt-2 bg-background border border-border rounded-md shadow-lg p-3 min-w-64 z-50">
+                    <div className="absolute top-full right-0 sm:right-0 left-0 sm:left-auto mt-2 bg-background border border-border rounded-md shadow-lg p-3 min-w-64 max-w-80 z-50">
                       <div className="space-y-3">
                         <div className="text-xs text-muted-foreground">
                           <div className="font-medium mb-1">Cache Information</div>
@@ -952,12 +952,10 @@ export default function PocketImporter() {
 
             {/* Right side - Add Article button */}
             {!showUploadSection && articles.length > 0 && (
-              <div className="flex justify-end sm:ml-auto">
-                <Button onClick={startAddingArticle} variant="outline" size="sm" className="bg-transparent">
-                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  <span className="text-xs sm:text-sm">Add Article</span>
-                </Button>
-              </div>
+              <Button onClick={startAddingArticle} variant="outline" size="sm" className="bg-transparent">
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="text-xs sm:text-sm">Add Article</span>
+              </Button>
             )}
           </div>
         </div>

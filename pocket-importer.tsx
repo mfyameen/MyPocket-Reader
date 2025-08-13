@@ -35,6 +35,7 @@ import {
   ChevronDown,
   ChevronUp,
   Filter,
+  Plus,
 } from "lucide-react"
 
 import Papa from "papaparse"
@@ -107,6 +108,14 @@ export default function PocketImporter() {
   const [showReadOnly, setShowReadOnly] = useState(false)
   const [showUnreadOnly, setShowUnreadOnly] = useState(false)
 
+  // New states for adding articles
+  const [showAddArticle, setShowAddArticle] = useState(false)
+  const [newArticleUrl, setNewArticleUrl] = useState("")
+  const [newArticleTitle, setNewArticleTitle] = useState("")
+  const [newArticleTags, setNewArticleTags] = useState("")
+  const [newArticleIsFavorite, setNewArticleIsFavorite] = useState(false)
+  const [addingArticle, setAddingArticle] = useState(false)
+
   // Cache management functions
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
     try {
@@ -173,6 +182,11 @@ export default function PocketImporter() {
       setEditTitleValue("")
       setAddingHighlight(null)
       setNewHighlightText("")
+      setShowAddArticle(false)
+      setNewArticleUrl("")
+      setNewArticleTitle("")
+      setNewArticleTags("")
+      setNewArticleIsFavorite(false)
     } catch (error) {
       console.error("Failed to clear cache:", error)
     }
@@ -255,7 +269,7 @@ export default function PocketImporter() {
     }
   }, [articles, highlightData, saveToCache])
 
-  const parseTagsAndFavorites = (tagString: string) => {
+  const parseTagsAndFavorites = useCallback((tagString: string) => {
     if (!tagString) return { tags: [], isFavorite: false }
 
     const tagParts = tagString
@@ -268,41 +282,44 @@ export default function PocketImporter() {
     const tags = tagParts.filter((tag) => tag !== "*" && tag !== "***")
 
     return { tags, isFavorite }
-  }
-
-  const parseCSV = useCallback((csvText: string): Article[] => {
-    try {
-      const result = Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header: string) => header.trim(),
-        transform: (value: string) => value.trim(),
-      })
-
-      if (result.errors.length > 0) {
-        console.warn("CSV parsing warnings:", result.errors)
-      }
-
-      return result.data
-        .map((row: any) => {
-          const { tags, isFavorite } = parseTagsAndFavorites(row.tags || "")
-
-          return {
-            title: row.title || "",
-            url: row.url || "",
-            time_added: Number.parseInt(row.time_added) || 0,
-            tags: row.tags || "",
-            status: row.status || "unread",
-            isFavorite,
-            parsedTags: tags,
-          } as Article
-        })
-        .filter((article) => article.title || article.url) // Filter out completely empty rows
-    } catch (error) {
-      console.error("Error parsing CSV with Papa Parse:", error)
-      throw new Error("Failed to parse CSV file. Please check the file format.")
-    }
   }, [])
+
+  const parseCSV = useCallback(
+    (csvText: string): Article[] => {
+      try {
+        const result = Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (header: string) => header.trim(),
+          transform: (value: string) => value.trim(),
+        })
+
+        if (result.errors.length > 0) {
+          console.warn("CSV parsing warnings:", result.errors)
+        }
+
+        return result.data
+          .map((row: any) => {
+            const { tags, isFavorite } = parseTagsAndFavorites(row.tags || "")
+
+            return {
+              title: row.title || "",
+              url: row.url || "",
+              time_added: Number.parseInt(row.time_added) || 0,
+              tags: row.tags || "",
+              status: row.status || "unread",
+              isFavorite,
+              parsedTags: tags,
+            } as Article
+          })
+          .filter((article) => article.title || article.url) // Filter out completely empty rows
+      } catch (error) {
+        console.error("Error parsing CSV with Papa Parse:", error)
+        throw new Error("Failed to parse CSV file. Please check the file format.")
+      }
+    },
+    [parseTagsAndFavorites],
+  )
 
   const handleCSVUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -664,6 +681,83 @@ export default function PocketImporter() {
     setNewHighlightText("")
   }, [])
 
+  // New functions for adding articles
+  const startAddingArticle = useCallback(() => {
+    setShowAddArticle(true)
+    setNewArticleUrl("")
+    setNewArticleTitle("")
+    setNewArticleTags("")
+    setNewArticleIsFavorite(false)
+  }, [])
+
+  const cancelAddingArticle = useCallback(() => {
+    setShowAddArticle(false)
+    setNewArticleUrl("")
+    setNewArticleTitle("")
+    setNewArticleTags("")
+    setNewArticleIsFavorite(false)
+  }, [])
+
+  const saveNewArticle = useCallback(async () => {
+    if (!newArticleUrl.trim()) {
+      alert("Please enter a URL for the article.")
+      return
+    }
+
+    // Check if URL already exists
+    const existingArticle = articles.find((article) => article.url === newArticleUrl.trim())
+    if (existingArticle) {
+      alert("An article with this URL already exists.")
+      return
+    }
+
+    setAddingArticle(true)
+
+    try {
+      // Parse tags
+      const { tags, isFavorite: tagBasedFavorite } = parseTagsAndFavorites(newArticleTags)
+
+      // Determine if article is favorite (either from checkbox or tags)
+      const isFavorite = newArticleIsFavorite || tagBasedFavorite
+
+      // Create new article
+      const newArticle: Article = {
+        title: newArticleTitle.trim() || newArticleUrl.trim(),
+        url: newArticleUrl.trim(),
+        time_added: Math.floor(Date.now() / 1000), // Current timestamp
+        tags: newArticleTags.trim(),
+        status: "unread", // Always default to unread
+        isFavorite,
+        parsedTags: tags,
+      }
+
+      // Add to articles list (at the beginning for newest first)
+      setArticles((prevArticles) => [newArticle, ...prevArticles])
+
+      // If no title was provided, try to fetch it
+      if (!newArticleTitle.trim()) {
+        fetchTitleFromUrl(newArticleUrl.trim())
+      }
+
+      // Reset form and close
+      cancelAddingArticle()
+    } catch (error) {
+      console.error("Error adding new article:", error)
+      alert("Failed to add article. Please try again.")
+    } finally {
+      setAddingArticle(false)
+    }
+  }, [
+    newArticleUrl,
+    newArticleTitle,
+    newArticleTags,
+    newArticleIsFavorite,
+    articles,
+    fetchTitleFromUrl,
+    cancelAddingArticle,
+    parseTagsAndFavorites,
+  ])
+
   // Pagination calculations
   const totalPages = Math.ceil(filteredArticles.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -729,52 +823,68 @@ export default function PocketImporter() {
               {"RIP Pocket. Import and explore your articles and highlights."}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <ThemeToggle />
-            {cacheInfo && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground bg-muted/50 px-2 sm:px-3 py-2 rounded-md">
-                <Database className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">
-                  Cached: {formatCacheDate(cacheInfo.timestamp)} ({cacheInfo.size})
-                </span>
-                <span className="sm:hidden">{cacheInfo.size}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearCache}
-                  className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
-                  title="Clear cached data"
-                >
-                  <Trash2 className="h-2 w-2 sm:h-3 sm:w-3" />
-                </Button>
-              </div>
-            )}
-            {!showUploadSection && (
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  onClick={() => setShowUploadSection(true)}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 sm:flex-none"
-                >
-                  <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  <span className="text-xs sm:text-sm">Upload</span>
-                </Button>
-                {articles.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            {/* Left side - Theme toggle, cache info, upload/export buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <ThemeToggle />
+              {cacheInfo && (
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground bg-muted/50 px-2 sm:px-3 py-2 rounded-md">
+                  <Database className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">
+                    Cached: {formatCacheDate(cacheInfo.timestamp)} ({cacheInfo.size})
+                  </span>
+                  <span className="sm:hidden">{cacheInfo.size}</span>
                   <Button
-                    onClick={downloadCachedData}
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearCache}
+                    className="h-5 w-5 sm:h-6 sm:w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                    title="Clear cached data"
+                  >
+                    <Trash2 className="h-2 w-2 sm:h-3 sm:w-3" />
+                  </Button>
+                </div>
+              )}
+              {!showUploadSection && (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setShowUploadSection(true)}
                     variant="outline"
                     size="sm"
-                    className="flex-1 sm:flex-none bg-transparent"
                   >
-                    <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    <span className="text-xs sm:text-sm">Export</span>
+                    <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="text-xs sm:text-sm">Upload</span>
                   </Button>
-                )}
+                  {articles.length > 0 && (
+                    <Button
+                      onClick={downloadCachedData}
+                      variant="outline"
+                      size="sm"
+                      className="bg-transparent"
+                    >
+                      <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      <span className="text-xs sm:text-sm">Export</span>
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right side - Add Article button */}
+            {!showUploadSection && articles.length > 0 && (
+              <div className="flex justify-end sm:ml-auto">
+                <Button
+                  onClick={startAddingArticle}
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent"
+                >
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="text-xs sm:text-sm">Add Article</span>
+                </Button>
               </div>
             )}
           </div>
-        </div>
 
         {/* Upload Section */}
         {showUploadSection && (
@@ -913,6 +1023,111 @@ export default function PocketImporter() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Add Article Section */}
+        {showAddArticle && (
+          <Card className="mb-6 sm:mb-8 border-2 border-dashed border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Plus className="h-5 w-5" />
+                Add New Article
+              </CardTitle>
+              <CardDescription className="text-sm">Add a new article to your collection manually</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-1 gap-4">
+                  <div>
+                    <Label htmlFor="new-article-url" className="text-sm font-medium mb-2 block">
+                      URL <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="new-article-url"
+                      type="url"
+                      placeholder="https://example.com/article"
+                      value={newArticleUrl}
+                      onChange={(e) => setNewArticleUrl(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-article-title" className="text-sm font-medium mb-2 block">
+                      Title <span className="text-xs text-muted-foreground">(optional - will auto-fetch if empty)</span>
+                    </Label>
+                    <Input
+                      id="new-article-title"
+                      type="text"
+                      placeholder="Article title"
+                      value={newArticleTitle}
+                      onChange={(e) => setNewArticleTitle(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-1 gap-4">
+                  <div>
+                    <Label htmlFor="new-article-tags" className="text-sm font-medium mb-2 block">
+                      Tags <span className="text-xs text-muted-foreground">(separate with |)</span>
+                    </Label>
+                    <Input
+                      id="new-article-tags"
+                      type="text"
+                      placeholder="tag1|tag2|tag3"
+                      value={newArticleTags}
+                      onChange={(e) => setNewArticleTags(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <Checkbox
+                    id="new-article-favorite"
+                    checked={newArticleIsFavorite}
+                    onCheckedChange={(checked) => setNewArticleIsFavorite(checked as boolean)}
+                  />
+                  <Label
+                    htmlFor="new-article-favorite"
+                    className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                  >
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    Mark as Favorite
+                  </Label>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    onClick={saveNewArticle}
+                    disabled={addingArticle || !newArticleUrl.trim()}
+                    className="flex-1 sm:flex-none"
+                  >
+                    {addingArticle ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Add Article
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={cancelAddingArticle}
+                    variant="outline"
+                    disabled={addingArticle}
+                    className="flex-1 sm:flex-none bg-transparent"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Stats Section - Collapsible on Mobile */}
@@ -1630,5 +1845,5 @@ export default function PocketImporter() {
         </footer>
       </div>
     </div>
-  )
+  )\
 }

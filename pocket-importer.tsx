@@ -12,7 +12,30 @@ import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Upload, FileText, HighlighterIcon as HighlightIcon, Search, Calendar, Tag, ExternalLink, BarChart3, Star, X, ChevronLeft, ChevronRight, Database, Trash2, RefreshCw, Heading, Loader2, Edit3, Check, Download, ChevronDown, ChevronUp, Filter } from 'lucide-react'
+import {
+  Upload,
+  FileText,
+  HighlighterIcon as HighlightIcon,
+  Search,
+  Calendar,
+  Tag,
+  BarChart3,
+  Star,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  Trash2,
+  RefreshCw,
+  Heading,
+  Loader2,
+  Edit3,
+  Check,
+  Download,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+} from "lucide-react"
 
 import Papa from "papaparse"
 import JSZip from "jszip"
@@ -74,6 +97,12 @@ export default function PocketImporter() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
+
+  // New state for ZIP upload loading
+  const [zipLoading, setZipLoading] = useState(false)
+
+  // New state for upload mode
+  const [uploadMode, setUploadMode] = useState<"zip" | "individual">("zip")
 
   // Cache management functions
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
@@ -311,6 +340,78 @@ export default function PocketImporter() {
       setLoading(false)
     }
   }, [])
+
+  const handleZipUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      setZipLoading(true)
+      try {
+        const zip = new JSZip()
+        const zipContent = await zip.loadAsync(file)
+
+        let csvFile: JSZip.JSZipObject | null = null
+        let jsonFile: JSZip.JSZipObject | null = null
+
+        // Look for CSV and JSON files
+        Object.keys(zipContent.files).forEach((filename) => {
+          const file = zipContent.files[filename]
+          if (!file.dir) {
+            // Skip directories
+            const lowerName = filename.toLowerCase()
+            if (lowerName.endsWith(".csv") && !csvFile) {
+              csvFile = file
+            } else if (lowerName.endsWith(".json") && !jsonFile) {
+              jsonFile = file
+            }
+          }
+        })
+
+        // Process CSV file if found
+        if (csvFile) {
+          try {
+            const csvText = await csvFile.async("text")
+            const parsedArticles = parseCSV(csvText)
+            if (parsedArticles.length > 0) {
+              setArticles(parsedArticles)
+            }
+          } catch (error) {
+            console.error("Error parsing CSV from ZIP:", error)
+            alert(`Error parsing CSV file: ${error instanceof Error ? error.message : "Unknown error"}`)
+          }
+        }
+
+        // Process JSON file if found
+        if (jsonFile) {
+          try {
+            const jsonText = await jsonFile.async("text")
+            const parsedHighlights = JSON.parse(jsonText) as ArticleWithHighlights[]
+            setHighlightData(parsedHighlights)
+          } catch (error) {
+            console.error("Error parsing JSON from ZIP:", error)
+            alert(`Error parsing JSON file: ${error instanceof Error ? error.message : "Unknown error"}`)
+          }
+        }
+
+        // Show results
+        if (!csvFile && !jsonFile) {
+          alert("No CSV or JSON files found in the ZIP archive.")
+        } else {
+          const messages = []
+          if (csvFile) messages.push("articles CSV")
+          if (jsonFile) messages.push("highlights JSON")
+          alert(`Successfully imported ${messages.join(" and ")} from ZIP file.`)
+        }
+      } catch (error) {
+        console.error("Error processing ZIP file:", error)
+        alert("Error processing ZIP file. Please make sure it's a valid ZIP archive.")
+      } finally {
+        setZipLoading(false)
+      }
+    },
+    [parseCSV],
+  )
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleDateString("en-US", {
@@ -594,9 +695,7 @@ export default function PocketImporter() {
                 <span className="hidden sm:inline">
                   Cached: {formatCacheDate(cacheInfo.timestamp)} ({cacheInfo.size})
                 </span>
-                <span className="sm:hidden">
-                  {cacheInfo.size}
-                </span>
+                <span className="sm:hidden">{cacheInfo.size}</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -610,12 +709,22 @@ export default function PocketImporter() {
             )}
             {!showUploadSection && (
               <div className="flex gap-2 flex-wrap">
-                <Button onClick={() => setShowUploadSection(true)} variant="outline" size="sm" className="flex-1 sm:flex-none">
+                <Button
+                  onClick={() => setShowUploadSection(true)}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                >
                   <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   <span className="text-xs sm:text-sm">Upload</span>
                 </Button>
                 {articles.length > 0 && (
-                  <Button onClick={downloadCachedData} variant="outline" size="sm" className="flex-1 sm:flex-none">
+                  <Button
+                    onClick={downloadCachedData}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 sm:flex-none bg-transparent"
+                  >
                     <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     <span className="text-xs sm:text-sm">Export</span>
                   </Button>
@@ -627,40 +736,140 @@ export default function PocketImporter() {
 
         {/* Upload Section */}
         {showUploadSection && (
-          <div className="grid md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5" />
-                  Upload Articles CSV
-                </CardTitle>
-                <CardDescription className="text-sm">Upload your Pocket articles export file</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Input id="csv-upload" type="file" accept=".csv" onChange={handleCSVUpload} disabled={loading} />
-                  {articles.length > 0 && <p className="text-sm text-green-600">✓ Loaded {articles.length} articles</p>}
-                </div>
-              </CardContent>
-            </Card>
+          <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
+            {/* Upload Mode Toggle */}
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-4 text-sm">
+                <button
+                  onClick={() => setUploadMode("zip")}
+                  className={`px-3 py-1 rounded-md transition-colors ${
+                    uploadMode === "zip"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  ZIP Upload
+                </button>
+                <span className="text-muted-foreground">|</span>
+                <button
+                  onClick={() => setUploadMode("individual")}
+                  className={`px-3 py-1 rounded-md transition-colors ${
+                    uploadMode === "individual"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Upload Individually
+                </button>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <HighlightIcon className="h-5 w-5" />
-                  Upload Highlights JSON
-                </CardTitle>
-                <CardDescription className="text-sm">Upload your Pocket highlights export file (optional)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Input id="json-upload" type="file" accept=".json" onChange={handleJSONUpload} disabled={loading} />
-                  {highlightData.length > 0 && (
-                    <p className="text-sm text-green-600">✓ Loaded highlights for {highlightData.length} articles</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            {/* ZIP Upload Mode */}
+            {uploadMode === "zip" && (
+              <Card className="border-2 border-dashed border-primary/20 bg-primary/5">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Upload className="h-5 w-5" />
+                    Import from ZIP File
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Upload a ZIP file containing your Pocket export files (CSV + JSON). We'll automatically detect and
+                    import both files for you.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <Input
+                      id="zip-upload"
+                      type="file"
+                      accept=".zip"
+                      onChange={handleZipUpload}
+                      disabled={loading || zipLoading}
+                      className="cursor-pointer"
+                    />
+                    {zipLoading && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Processing ZIP file...
+                      </div>
+                    )}
+                    {(articles.length > 0 || highlightData.length > 0) && (
+                      <div className="space-y-2">
+                        {articles.length > 0 && (
+                          <p className="text-sm text-green-600 flex items-center gap-2">
+                            <Check className="h-4 w-4" />
+                            Loaded {articles.length} articles
+                          </p>
+                        )}
+                        {highlightData.length > 0 && (
+                          <p className="text-sm text-green-600 flex items-center gap-2">
+                            <Check className="h-4 w-4" />
+                            Loaded highlights for {highlightData.length} articles
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Individual Upload Mode */}
+            {uploadMode === "individual" && (
+              <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="h-5 w-5" />
+                      Upload Articles CSV
+                    </CardTitle>
+                    <CardDescription className="text-sm">Upload your Pocket articles export file</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <Input
+                        id="csv-upload"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCSVUpload}
+                        disabled={loading || zipLoading}
+                      />
+                      {articles.length > 0 && (
+                        <p className="text-sm text-green-600">✓ Loaded {articles.length} articles</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <HighlightIcon className="h-5 w-5" />
+                      Upload Highlights JSON
+                    </CardTitle>
+                    <CardDescription className="text-sm">
+                      Upload your Pocket highlights export file (optional)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <Input
+                        id="json-upload"
+                        type="file"
+                        accept=".json"
+                        onChange={handleJSONUpload}
+                        disabled={loading || zipLoading}
+                      />
+                      {highlightData.length > 0 && (
+                        <p className="text-sm text-green-600">
+                          ✓ Loaded highlights for {highlightData.length} articles
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         )}
 
@@ -673,28 +882,29 @@ export default function PocketImporter() {
                   <BarChart3 className="h-5 w-5" />
                   Import Statistics
                 </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowStats(!showStats)}
-                  className="sm:hidden"
-                >
+                <Button variant="ghost" size="sm" onClick={() => setShowStats(!showStats)} className="sm:hidden">
                   {showStats ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className={`${showStats ? 'block' : 'hidden sm:block'}`}>
+            <CardContent className={`${showStats ? "block" : "hidden sm:block"}`}>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
                 <div className="text-center p-3 sm:p-0">
-                  <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
+                  <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {stats.totalArticles}
+                  </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Total</div>
                 </div>
                 <div className="text-center p-3 sm:p-0">
-                  <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
+                  <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">
+                    {stats.readArticles}
+                  </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Read</div>
                 </div>
                 <div className="text-center p-3 sm:p-0">
-                  <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
+                  <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {stats.unreadArticles}
+                  </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Unread</div>
                 </div>
                 <div className="text-center p-3 sm:p-0">
@@ -710,7 +920,9 @@ export default function PocketImporter() {
                   <div className="text-xs sm:text-sm text-muted-foreground">With Highlights</div>
                 </div>
                 <div className="text-center p-3 sm:p-0">
-                  <div className="text-lg sm:text-2xl font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
+                  <div className="text-lg sm:text-2xl font-bold text-pink-600 dark:text-pink-400">
+                    {stats.totalHighlights}
+                  </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Total Highlights</div>
                 </div>
               </div>
@@ -733,16 +945,18 @@ export default function PocketImporter() {
                       className="w-full mb-4 justify-center"
                     >
                       <Filter className="h-4 w-4 mr-2" />
-                      {showFilters ? 'Hide Filters' : 'Show Filters'}
+                      {showFilters ? "Hide Filters" : "Show Filters"}
                       {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
                     </Button>
                   </div>
 
-                  <div className={`space-y-4 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                  <div className={`space-y-4 ${showFilters ? "block" : "hidden lg:block"}`}>
                     {/* Search and Sort Row */}
                     <div className="flex flex-col lg:flex-row gap-4">
                       <div className="flex-1">
-                        <Label htmlFor="search" className="text-sm font-medium mb-2 block">Search Articles</Label>
+                        <Label htmlFor="search" className="text-sm font-medium mb-2 block">
+                          Search Articles
+                        </Label>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
@@ -755,7 +969,9 @@ export default function PocketImporter() {
                         </div>
                       </div>
                       <div className="w-full lg:w-48">
-                        <Label htmlFor="sort-by" className="text-sm font-medium mb-2 block">Sort by</Label>
+                        <Label htmlFor="sort-by" className="text-sm font-medium mb-2 block">
+                          Sort by
+                        </Label>
                         <Select
                           value={sortBy}
                           onValueChange={(value: "default" | "newest" | "oldest" | "title-asc" | "title-desc") =>
@@ -786,7 +1002,10 @@ export default function PocketImporter() {
                             checked={showFavoritesOnly}
                             onCheckedChange={(checked) => setShowFavoritesOnly(checked as boolean)}
                           />
-                          <Label htmlFor="favorites-only" className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                          <Label
+                            htmlFor="favorites-only"
+                            className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                          >
                             <Star className="h-4 w-4 text-yellow-500" />
                             Show Favorites Only
                           </Label>
@@ -797,7 +1016,10 @@ export default function PocketImporter() {
                             checked={showHighlightsOnly}
                             onCheckedChange={(checked) => setShowHighlightsOnly(checked as boolean)}
                           />
-                          <Label htmlFor="highlights-only" className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                          <Label
+                            htmlFor="highlights-only"
+                            className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                          >
                             <HighlightIcon className="h-4 w-4 text-purple-500" />
                             Show With Highlights Only
                           </Label>
@@ -842,7 +1064,9 @@ export default function PocketImporter() {
                                   key={tag}
                                   variant={isSelected ? "default" : "outline"}
                                   className={`cursor-pointer transition-all text-xs ${
-                                    isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
+                                    isDisabled
+                                      ? "opacity-40 cursor-not-allowed hover:opacity-40"
+                                      : "hover:bg-primary/80"
                                   }`}
                                   onClick={() => !isDisabled && handleTagToggle(tag)}
                                   title={
@@ -873,8 +1097,13 @@ export default function PocketImporter() {
                     {/* Pagination Controls */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t gap-4">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="items-per-page" className="text-xs font-medium">Items per page:</Label>
-                        <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                        <Label htmlFor="items-per-page" className="text-xs font-medium">
+                          Items per page:
+                        </Label>
+                        <Select
+                          value={itemsPerPage.toString()}
+                          onValueChange={(value) => setItemsPerPage(Number(value))}
+                        >
                           <SelectTrigger className="w-20 h-9">
                             <SelectValue />
                           </SelectTrigger>
@@ -968,7 +1197,9 @@ export default function PocketImporter() {
                                   </Button>
                                 </>
                               )}
-                              {article.isFavorite && <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 fill-current flex-shrink-0" />}
+                              {article.isFavorite && (
+                                <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 fill-current flex-shrink-0" />
+                              )}
                             </div>
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
                               <div className="flex items-center gap-1">
@@ -976,7 +1207,10 @@ export default function PocketImporter() {
                                 <span>{formatDate(article.time_added)}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant={article.status === "read" ? "default" : "secondary"} className="text-xs h-5">
+                                <Badge
+                                  variant={article.status === "read" ? "default" : "secondary"}
+                                  className="text-xs h-5"
+                                >
                                   {article.status}
                                 </Badge>
                                 {highlights.length > 0 && (
@@ -988,7 +1222,12 @@ export default function PocketImporter() {
                             </div>
                           </div>
                           <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-                            <Button variant="outline" size="sm" className="h-8 w-8 sm:h-8 sm:w-8 p-0 text-muted-foreground hover:text-foreground" asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 sm:h-8 sm:w-8 p-0 text-muted-foreground hover:text-foreground bg-transparent"
+                              asChild
+                            >
                               <a
                                 href={waybackMachineUrl}
                                 target="_blank"
@@ -1081,7 +1320,9 @@ export default function PocketImporter() {
                               <div className="space-y-2">
                                 {highlights.map((highlight, hIndex) => (
                                   <div key={hIndex} className="bg-muted/50 p-2 sm:p-3 rounded-md">
-                                    <p className="text-xs sm:text-sm italic mb-1 sm:mb-2 break-words">"{highlight.quote}"</p>
+                                    <p className="text-xs sm:text-sm italic mb-1 sm:mb-2 break-words">
+                                      "{highlight.quote}"
+                                    </p>
                                     <p className="text-xs text-muted-foreground">{formatDate(highlight.created_at)}</p>
                                   </div>
                                 ))}

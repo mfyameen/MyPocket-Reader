@@ -885,6 +885,7 @@ export default function PocketImporter() {
               </div>
             )}
           </div>
+        </div>
 
         {/* Upload Section */}
         {showUploadSection && (
@@ -1845,5 +1846,5 @@ export default function PocketImporter() {
         </footer>
       </div>
     </div>
-  )\
+  )
 }

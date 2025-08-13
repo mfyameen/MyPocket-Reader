@@ -104,6 +104,9 @@ export default function PocketImporter() {
   // New state for upload mode
   const [uploadMode, setUploadMode] = useState<"zip" | "individual">("zip")
 
+  const [showReadOnly, setShowReadOnly] = useState(false)
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false)
+
   // Cache management functions
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
     try {
@@ -161,6 +164,8 @@ export default function PocketImporter() {
       setSelectedTags([])
       setShowFavoritesOnly(false)
       setShowHighlightsOnly(false)
+      setShowReadOnly(false)
+      setShowUnreadOnly(false)
       setSortBy("default")
       setCurrentPage(1)
       setFetchingTitles(new Set())
@@ -495,8 +500,12 @@ export default function PocketImporter() {
 
       const matchesFavorites = !showFavoritesOnly || article.isFavorite
       const matchesHighlights = !showHighlightsOnly || getHighlightsForArticle(article.url).length > 0
+      const matchesReadStatus =
+        (!showReadOnly && !showUnreadOnly) ||
+        (showReadOnly && article.status === "read") ||
+        (showUnreadOnly && article.status !== "read")
 
-      return matchesSearch && matchesFavorites && matchesHighlights
+      return matchesSearch && matchesFavorites && matchesHighlights && matchesReadStatus
     })
 
     // If no tags are selected, all tags from base filtered articles are available
@@ -519,7 +528,16 @@ export default function PocketImporter() {
     })
 
     return Array.from(availableTags)
-  }, [articles, searchTerm, showFavoritesOnly, showHighlightsOnly, selectedTags, highlightData])
+  }, [
+    articles,
+    searchTerm,
+    showFavoritesOnly,
+    showHighlightsOnly,
+    showReadOnly,
+    showUnreadOnly,
+    selectedTags,
+    highlightData,
+  ])
 
   // Then the filteredArticles useMemo can safely use getHighlightsForArticle
   const filteredArticles = useMemo(() => {
@@ -535,7 +553,12 @@ export default function PocketImporter() {
 
       const matchesHighlights = !showHighlightsOnly || getHighlightsForArticle(article.url).length > 0
 
-      return matchesSearch && matchesTags && matchesFavorites && matchesHighlights
+      const matchesReadStatus =
+        (!showReadOnly && !showUnreadOnly) ||
+        (showReadOnly && article.status === "read") ||
+        (showUnreadOnly && article.status !== "read")
+
+      return matchesSearch && matchesTags && matchesFavorites && matchesHighlights && matchesReadStatus
     })
 
     // Apply sorting
@@ -557,7 +580,17 @@ export default function PocketImporter() {
     })
 
     return filtered
-  }, [articles, searchTerm, selectedTags, showFavoritesOnly, showHighlightsOnly, highlightData, sortBy])
+  }, [
+    articles,
+    searchTerm,
+    selectedTags,
+    showFavoritesOnly,
+    showHighlightsOnly,
+    showReadOnly,
+    showUnreadOnly,
+    highlightData,
+    sortBy,
+  ])
 
   const startEditingTitle = useCallback((url: string, currentTitle: string) => {
     setEditingTitle(url)
@@ -640,7 +673,16 @@ export default function PocketImporter() {
   // Reset to first page when filters change
   useMemo(() => {
     setCurrentPage(1)
-  }, [searchTerm, selectedTags, showFavoritesOnly, showHighlightsOnly, itemsPerPage, sortBy])
+  }, [
+    searchTerm,
+    selectedTags,
+    showFavoritesOnly,
+    showHighlightsOnly,
+    showReadOnly,
+    showUnreadOnly,
+    itemsPerPage,
+    sortBy,
+  ])
 
   // Hide upload section when both files are uploaded
   useEffect(() => {
@@ -889,36 +931,104 @@ export default function PocketImporter() {
             </CardHeader>
             <CardContent className={`${showStats ? "block" : "hidden"}`}>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-                <div className="text-center p-3 sm:p-0">
+                <button
+                  onClick={() => {
+                    // Clear all filters to show total
+                    setSearchTerm("")
+                    setSelectedTags([])
+                    setShowFavoritesOnly(false)
+                    setShowHighlightsOnly(false)
+                    setSortBy("default")
+                    setShowFilters(true)
+                  }}
+                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
+                  title="Click to show all articles"
+                >
                   <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {stats.totalArticles}
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Total</div>
-                </div>
-                <div className="text-center p-3 sm:p-0">
+                </button>
+                <button
+                  onClick={() => {
+                    // Filter to show only read articles
+                    setSearchTerm("")
+                    setSelectedTags([])
+                    setShowFavoritesOnly(false)
+                    setShowHighlightsOnly(false)
+                    setSortBy("default")
+                    // We need to add a read status filter
+                    setShowReadOnly(true)
+                    setShowFilters(true)
+                  }}
+                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
+                  title="Click to show only read articles"
+                >
                   <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">
                     {stats.readArticles}
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Read</div>
-                </div>
-                <div className="text-center p-3 sm:p-0">
+                </button>
+                <button
+                  onClick={() => {
+                    // Filter to show only unread articles
+                    setSearchTerm("")
+                    setSelectedTags([])
+                    setShowFavoritesOnly(false)
+                    setShowHighlightsOnly(false)
+                    setSortBy("default")
+                    setShowReadOnly(false)
+                    setShowUnreadOnly(true)
+                    setShowFilters(true)
+                  }}
+                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
+                  title="Click to show only unread articles"
+                >
                   <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
                     {stats.unreadArticles}
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Unread</div>
-                </div>
-                <div className="text-center p-3 sm:p-0">
+                </button>
+                <button
+                  onClick={() => {
+                    // Filter to show only favorites
+                    setSearchTerm("")
+                    setSelectedTags([])
+                    setShowFavoritesOnly(true)
+                    setShowHighlightsOnly(false)
+                    setShowReadOnly(false)
+                    setShowUnreadOnly(false)
+                    setSortBy("default")
+                    setShowFilters(true)
+                  }}
+                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
+                  title="Click to show only favorite articles"
+                >
                   <div className="text-lg sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {stats.favoriteArticles}
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Favorites</div>
-                </div>
-                <div className="text-center p-3 sm:p-0">
+                </button>
+                <button
+                  onClick={() => {
+                    // Filter to show only articles with highlights
+                    setSearchTerm("")
+                    setSelectedTags([])
+                    setShowFavoritesOnly(false)
+                    setShowHighlightsOnly(true)
+                    setShowReadOnly(false)
+                    setShowUnreadOnly(false)
+                    setSortBy("default")
+                    setShowFilters(true)
+                  }}
+                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
+                  title="Click to show only articles with highlights"
+                >
                   <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {stats.articlesWithHighlights}
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">With Highlights</div>
-                </div>
+                </button>
                 <div className="text-center p-3 sm:p-0">
                   <div className="text-lg sm:text-2xl font-bold text-pink-600 dark:text-pink-400">
                     {stats.totalHighlights}
@@ -1019,6 +1129,40 @@ export default function PocketImporter() {
                         >
                           <HighlightIcon className="h-4 w-4 text-purple-500" />
                           Show With Highlights Only
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="read-only"
+                          checked={showReadOnly}
+                          onCheckedChange={(checked) => {
+                            setShowReadOnly(checked as boolean)
+                            if (checked) setShowUnreadOnly(false)
+                          }}
+                        />
+                        <Label
+                          htmlFor="read-only"
+                          className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                        >
+                          <Check className="h-4 w-4 text-green-500" />
+                          Show Read Only
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="unread-only"
+                          checked={showUnreadOnly}
+                          onCheckedChange={(checked) => {
+                            setShowUnreadOnly(checked as boolean)
+                            if (checked) setShowReadOnly(false)
+                          }}
+                        />
+                        <Label
+                          htmlFor="unread-only"
+                          className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                        >
+                          <X className="h-4 w-4 text-orange-500" />
+                          Show Unread Only
                         </Label>
                       </div>
                     </div>

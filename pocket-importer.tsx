@@ -128,9 +128,15 @@ export default function PocketImporter() {
   const [showTagSuggestions, setShowTagSuggestions] = useState(false)
   const [selectedTagIndex, setSelectedTagIndex] = useState(-1)
 
-  // Cache management functions
+  // Cache management functions with improved debugging
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
     try {
+      console.log("💾 Saving to cache:", {
+        articlesCount: articlesData.length,
+        highlightsCount: highlightsData.length,
+        timestamp: new Date().toISOString(),
+      })
+
       const cacheData: CachedData = {
         articles: articlesData,
         highlightData: highlightsData,
@@ -144,8 +150,12 @@ export default function PocketImporter() {
         timestamp: cacheData.timestamp,
         size: formatBytes(new Blob([dataString]).size),
       })
+
+      console.log("✅ Cache saved successfully")
     } catch (error) {
-      console.error("Failed to save data to cache:", error)
+      console.error("❌ Failed to save data to cache:", error)
+      // Show user-visible error
+      alert("Failed to save data to cache. Your changes may not be persisted.")
     }
   }, [])
 
@@ -153,12 +163,19 @@ export default function PocketImporter() {
     try {
       const cachedDataString = localStorage.getItem(CACHE_KEY)
       if (cachedDataString) {
+        console.log("📂 Loading from cache...")
         const cachedData: CachedData = JSON.parse(cachedDataString)
         setArticles(cachedData.articles)
         setHighlightData(cachedData.highlightData)
         setCacheInfo({
           timestamp: cachedData.timestamp,
           size: formatBytes(new Blob([cachedDataString]).size),
+        })
+
+        console.log("✅ Cache loaded successfully:", {
+          articlesCount: cachedData.articles.length,
+          highlightsCount: cachedData.highlightData.length,
+          cacheDate: new Date(cachedData.timestamp).toISOString(),
         })
 
         // Hide upload section if we have both types of data
@@ -169,7 +186,7 @@ export default function PocketImporter() {
         return true
       }
     } catch (error) {
-      console.error("Failed to load data from cache:", error)
+      console.error("❌ Failed to load data from cache:", error)
     }
     return false
   }, [])
@@ -206,8 +223,9 @@ export default function PocketImporter() {
       setNewArticleIsFavorite(false)
       setShowCacheMenu(false)
       setShowClearCacheConfirm(false)
+      console.log("🗑️ Cache cleared successfully")
     } catch (error) {
-      console.error("Failed to clear cache:", error)
+      console.error("❌ Failed to clear cache:", error)
     }
   }, [showClearCacheConfirm])
 
@@ -281,10 +299,20 @@ export default function PocketImporter() {
     setIsLoadingFromCache(false)
   }, [loadFromCache])
 
-  // Save to cache whenever articles or highlights change
+  // Save to cache whenever articles or highlights change - with improved debugging
   useEffect(() => {
     if (articles.length > 0 || highlightData.length > 0) {
-      saveToCache(articles, highlightData)
+      console.log("🔄 Articles or highlights changed, triggering cache save...", {
+        articlesLength: articles.length,
+        highlightDataLength: highlightData.length,
+      })
+
+      // Use a small delay to batch rapid updates
+      const timeoutId = setTimeout(() => {
+        saveToCache(articles, highlightData)
+      }, 100)
+
+      return () => clearTimeout(timeoutId)
     }
   }, [articles, highlightData, saveToCache])
 
@@ -475,11 +503,17 @@ export default function PocketImporter() {
     return highlightData.find((item) => item.url === url)?.highlights || []
   }
 
-  // Function to fetch title from URL
+  // Function to fetch title from URL - improved with better error handling and debugging
   const fetchTitleFromUrl = useCallback(async (url: string) => {
+    console.log(`🔍 Starting title fetch for: ${url}`)
+
     try {
       // Add URL to fetching set
-      setFetchingTitles((prev) => new Set(prev).add(url))
+      setFetchingTitles((prev) => {
+        const newSet = new Set(prev).add(url)
+        console.log(`⏳ Added to fetching set. Currently fetching: ${Array.from(newSet).length} titles`)
+        return newSet
+      })
 
       // Use a CORS proxy service to fetch the page
       const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
@@ -499,16 +533,24 @@ export default function PocketImporter() {
       const extractedTitle = titleElement?.textContent?.trim()
 
       if (extractedTitle && extractedTitle !== url) {
+        console.log(`✅ Title fetched successfully for ${url}: "${extractedTitle}"`)
+
         // Update the article with the new title
-        setArticles((prevArticles) =>
-          prevArticles.map((article) => (article.url === url ? { ...article, title: extractedTitle } : article)),
-        )
+        setArticles((prevArticles) => {
+          const updatedArticles = prevArticles.map((article) =>
+            article.url === url ? { ...article, title: extractedTitle } : article,
+          )
+
+          console.log(`📝 Updated articles state with new title for ${url}`)
+          return updatedArticles
+        })
+
         return extractedTitle
       } else {
         throw new Error("No title found or title is same as URL")
       }
     } catch (error) {
-      console.error(`Failed to fetch title for ${url}:`, error)
+      console.error(`❌ Failed to fetch title for ${url}:`, error)
       // You could show a toast notification here
       return null
     } finally {
@@ -516,6 +558,7 @@ export default function PocketImporter() {
       setFetchingTitles((prev) => {
         const newSet = new Set(prev)
         newSet.delete(url)
+        console.log(`✅ Removed from fetching set. Currently fetching: ${Array.from(newSet).length} titles`)
         return newSet
       })
     }
@@ -642,9 +685,16 @@ export default function PocketImporter() {
   const saveEditedTitle = useCallback(
     (url: string) => {
       if (editTitleValue.trim()) {
-        setArticles((prevArticles) =>
-          prevArticles.map((article) => (article.url === url ? { ...article, title: editTitleValue.trim() } : article)),
-        )
+        console.log(`📝 Saving edited title for ${url}: "${editTitleValue.trim()}"`)
+
+        setArticles((prevArticles) => {
+          const updatedArticles = prevArticles.map((article) =>
+            article.url === url ? { ...article, title: editTitleValue.trim() } : article,
+          )
+
+          console.log(`✅ Updated articles state with edited title for ${url}`)
+          return updatedArticles
+        })
       }
       setEditingTitle(null)
       setEditTitleValue("")

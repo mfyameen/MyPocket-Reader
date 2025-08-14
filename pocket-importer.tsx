@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -1757,7 +1756,8 @@ export default function PocketImporter() {
             </Card>
 
             {/* Articles List */}
-            <div className="space-y-3 sm:space-y-4">
+            {/* Articles List - Responsive Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {paginatedArticles.map((article, index) => {
                 const highlights = getHighlightsForArticle(article.url)
                 const waybackMachineUrl = `https://web.archive.org/web/${article.url}`
@@ -1765,240 +1765,247 @@ export default function PocketImporter() {
                 const articleNeedsTitle = needsTitle(article)
 
                 return (
-                  <Card key={startIndex + index} className="group">
-                    <CardContent className="pt-3 pb-3 sm:pt-6 sm:pb-6">
-                      <div className="space-y-2 sm:space-y-3">
-                        <div className="flex items-start justify-between gap-2 sm:gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start gap-2 mb-1 sm:mb-2">
-                              {editingTitle === article.url ? (
-                                <div className="flex items-center gap-2 flex-1">
-                                  <Input
-                                    value={editTitleValue}
-                                    onChange={(e) => setEditTitleValue(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        saveEditedTitle(article.url)
-                                      } else if (e.key === "Escape") {
-                                        cancelEditingTitle()
-                                      }
-                                    }}
-                                    className="flex-1 text-sm sm:text-base"
-                                    autoFocus
-                                  />
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => saveEditedTitle(article.url)}
-                                    className="h-8 w-8 p-0 flex-shrink-0"
-                                    title="Save title"
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={cancelEditingTitle}
-                                    className="h-8 w-8 p-0 flex-shrink-0"
-                                    title="Cancel editing"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <>
+                  <Card key={startIndex + index} className="group h-fit hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        {/* Header with title and actions */}
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2 flex-1 min-w-0">
+                              {article.isFavorite && (
+                                <Star className="h-4 w-4 text-yellow-500 fill-current flex-shrink-0 mt-0.5" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                {editingTitle === article.url ? (
+                                  <div className="space-y-2">
+                                    <Input
+                                      value={editTitleValue}
+                                      onChange={(e) => setEditTitleValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          saveEditedTitle(article.url)
+                                        } else if (e.key === "Escape") {
+                                          cancelEditingTitle()
+                                        }
+                                      }}
+                                      className="text-sm"
+                                      autoFocus
+                                    />
+                                    <div className="flex gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => saveEditedTitle(article.url)}
+                                        className="h-7 px-2 text-xs"
+                                      >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Save
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={cancelEditingTitle}
+                                        className="h-7 px-2 text-xs"
+                                      >
+                                        <X className="h-3 w-3 mr-1" />
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
                                   <a
                                     href={article.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="font-semibold text-sm sm:text-lg leading-tight hover:text-primary transition-colors cursor-pointer flex-1 min-w-0 break-words"
-                                    title="Click to open article in new tab"
+                                    className="font-semibold text-sm leading-tight hover:text-primary transition-colors cursor-pointer block break-words line-clamp-3"
+                                    title={`${article.title || article.url}\n\nClick to open article`}
                                   >
                                     {article.title || article.url}
                                   </a>
-                                  {articleNeedsTitle && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => fetchTitleFromUrl(article.url)}
-                                      disabled={isFetchingTitle}
-                                      className="h-7 w-7 sm:h-8 sm:w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                                      title={isFetchingTitle ? "Fetching title..." : "Fetch title from webpage"}
-                                    >
-                                      {isFetchingTitle ? (
-                                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                                      ) : (
-                                        <Heading className="h-3 w-3 sm:h-4 sm:w-4" />
-                                      )}
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => startEditingTitle(article.url, article.title)}
-                                    className="h-7 w-7 sm:h-8 sm:w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                                    title="Edit title"
-                                  >
-                                    <Edit3 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  </Button>
-                                </>
-                              )}
-                              {article.isFavorite && (
-                                <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 fill-current flex-shrink-0" />
-                              )}
-                            </div>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span>{formatDate(article.time_added)}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  variant={article.status === "read" ? "default" : "secondary"}
-                                  className="text-xs h-5"
-                                >
-                                  {article.status}
-                                </Badge>
-                                {highlights.length > 0 && (
-                                  <Badge variant="outline" className="text-purple-600 dark:text-purple-400 text-xs h-5">
-                                    {highlights.length} highlight{highlights.length !== 1 ? "s" : ""}
-                                  </Badge>
                                 )}
                               </div>
                             </div>
-                          </div>
-                          <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 sm:h-8 sm:w-8 p-0 text-muted-foreground hover:text-foreground bg-transparent"
-                              asChild
-                            >
-                              <a
-                                href={waybackMachineUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Open article on Wayback Machine"
+
+                            {/* Action buttons */}
+                            <div className="flex gap-1 flex-shrink-0">
+                              {articleNeedsTitle && editingTitle !== article.url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => fetchTitleFromUrl(article.url)}
+                                  disabled={isFetchingTitle}
+                                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title={isFetchingTitle ? "Fetching title..." : "Fetch title from webpage"}
+                                >
+                                  {isFetchingTitle ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Heading className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              )}
+                              {editingTitle !== article.url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => startEditingTitle(article.url, article.title)}
+                                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Edit title"
+                                >
+                                  <Edit3 className="h-3 w-3" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                asChild
                               >
-                                <img
-                                  src={theme === "dark" ? "/internet-archive-inverted.png" : "/internet-archive.svg"}
-                                  alt="Internet Archive Wayback Machine"
-                                  className="h-4 w-4"
-                                />
-                              </a>
-                            </Button>
+                                <a
+                                  href={waybackMachineUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open on Wayback Machine"
+                                >
+                                  <img
+                                    src={theme === "dark" ? "/internet-archive-inverted.png" : "/internet-archive.svg"}
+                                    alt="Wayback Machine"
+                                    className="h-3 w-3"
+                                  />
+                                </a>
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Meta information */}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{formatDate(article.time_added)}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Badge
+                                variant={article.status === "read" ? "default" : "secondary"}
+                                className="text-xs h-4 px-1.5"
+                              >
+                                {article.status}
+                              </Badge>
+                              {highlights.length > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-purple-600 dark:text-purple-400 text-xs h-4 px-1.5"
+                                >
+                                  {highlights.length}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        {/* Tags Row */}
-                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                          {article.parsedTags.length > 0 && (
-                            <>
-                              <Tag className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                              {article.parsedTags.map((tag, tagIndex) => (
-                                <Badge key={tagIndex} variant="outline" className="text-xs h-5">
+                        {/* Tags */}
+                        {article.parsedTags.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Tag className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <div className="flex flex-wrap gap-1">
+                              {article.parsedTags.slice(0, 3).map((tag, tagIndex) => (
+                                <Badge key={tagIndex} variant="outline" className="text-xs h-4 px-1.5">
                                   {tag}
                                 </Badge>
                               ))}
-                            </>
-                          )}
-                        </div>
-
-                        {/* Add Highlight Button for articles without highlights */}
-                        {highlights.length === 0 && addingHighlight !== article.url && (
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => startAddingHighlight(article.url)}
-                              className="w-full h-8 sm:h-8 text-xs sm:text-sm text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60"
-                              title="Add your first highlight for this article"
-                            >
-                              <HighlightIcon className="h-3 w-3 mr-2" />
-                              Add Highlight
-                            </Button>
+                              {article.parsedTags.length > 3 && (
+                                <Badge variant="outline" className="text-xs h-4 px-1.5 text-muted-foreground">
+                                  +{article.parsedTags.length - 3}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         )}
 
-                        {(highlights.length > 0 || addingHighlight === article.url) && (
-                          <div>
-                            <Separator />
-                            <div className="space-y-2 pt-2">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-medium text-sm flex items-center gap-2">
-                                  <HighlightIcon className="h-4 w-4" />
-                                  Highlights
-                                </h4>
-                                {addingHighlight !== article.url && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => startAddingHighlight(article.url)}
-                                    className="h-7 px-2 text-xs"
-                                    title="Add new highlight"
-                                  >
-                                    <HighlightIcon className="h-3 w-3 mr-1" />
-                                    Add
-                                  </Button>
-                                )}
+                        {/* Highlights section */}
+                        {highlights.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1 text-xs font-medium">
+                                <HighlightIcon className="h-3 w-3" />
+                                <span>Highlights ({highlights.length})</span>
                               </div>
-                              <div className="space-y-2">
-                                {highlights.map((highlight, hIndex) => (
-                                  <div key={hIndex} className="bg-muted/50 p-2 sm:p-3 rounded-md">
-                                    <p className="text-xs sm:text-sm italic mb-1 sm:mb-2 break-words">
-                                      "{highlight.quote}"
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{formatDate(highlight.created_at)}</p>
-                                  </div>
-                                ))}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => startAddingHighlight(article.url)}
+                                className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Add highlight"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
 
-                                {/* New Highlight Input */}
-                                {addingHighlight === article.url && (
-                                  <div className="bg-muted/30 p-2 sm:p-3 rounded-md border-2 border-dashed border-muted-foreground/30">
-                                    <textarea
-                                      value={newHighlightText}
-                                      onChange={(e) => setNewHighlightText(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter" && e.ctrlKey) {
-                                          saveNewHighlight(article.url)
-                                        } else if (e.key === "Escape") {
-                                          cancelAddingHighlight()
-                                        }
-                                      }}
-                                      placeholder="Enter your highlight text..."
-                                      className="w-full min-h-[50px] sm:min-h-[60px] p-2 text-xs sm:text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                                      autoFocus
-                                    />
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-2">
-                                      <p className="text-xs text-muted-foreground">
-                                        Press Ctrl+Enter to save, Esc to cancel
-                                      </p>
-                                      <div className="flex gap-2">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => saveNewHighlight(article.url)}
-                                          disabled={!newHighlightText.trim()}
-                                          className="h-6 px-2 text-xs"
-                                          title="Save highlight"
-                                        >
-                                          <Check className="h-3 w-3 mr-1" />
-                                          Save
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={cancelAddingHighlight}
-                                          className="h-6 px-2 text-xs"
-                                          title="Cancel"
-                                        >
-                                          <X className="h-3 w-3 mr-1" />
-                                          Cancel
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
+                            <div className="space-y-2">
+                              {highlights.map((highlight, hIndex) => (
+                                <div
+                                  key={hIndex}
+                                  className="bg-muted/30 p-3 rounded text-xs border-l-2 border-primary/30"
+                                >
+                                  <p className="italic mb-2 leading-relaxed break-words">"{highlight.quote}"</p>
+                                  <p className="text-muted-foreground text-xs">{formatDate(highlight.created_at)}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Add highlight for articles without highlights */}
+                        {highlights.length === 0 && addingHighlight !== article.url && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startAddingHighlight(article.url)}
+                            className="w-full h-7 text-xs text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <HighlightIcon className="h-3 w-3 mr-1" />
+                            Add Highlight
+                          </Button>
+                        )}
+
+                        {/* New highlight input */}
+                        {addingHighlight === article.url && (
+                          <div className="space-y-2 p-2 bg-muted/20 rounded border-2 border-dashed border-muted-foreground/30">
+                            <textarea
+                              value={newHighlightText}
+                              onChange={(e) => setNewHighlightText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && e.ctrlKey) {
+                                  saveNewHighlight(article.url)
+                                } else if (e.key === "Escape") {
+                                  cancelAddingHighlight()
+                                }
+                              }}
+                              placeholder="Enter highlight text..."
+                              className="w-full min-h-[60px] p-2 text-xs bg-background border border-input rounded resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                              autoFocus
+                            />
+                            <div className="flex justify-between items-center">
+                              <p className="text-xs text-muted-foreground">Ctrl+Enter to save</p>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => saveNewHighlight(article.url)}
+                                  disabled={!newHighlightText.trim()}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Save
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={cancelAddingHighlight}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  <X className="h-3 w-3 mr-1" />
+                                  Cancel
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -2009,7 +2016,6 @@ export default function PocketImporter() {
                 )
               })}
             </div>
-
             {/* Pagination Navigation */}
             {totalPages > 1 && (
               <Card>

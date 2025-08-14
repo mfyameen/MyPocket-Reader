@@ -1766,6 +1766,22 @@ export default function PocketImporter() {
                                   >
                                     {article.title || article.url}
                                   </a>
+                                  {articleNeedsTitle && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => fetchTitleFromUrl(article.url)}
+                                      disabled={isFetchingTitle}
+                                      className="h-7 w-7 sm:h-8 sm:w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                      title={isFetchingTitle ? "Fetching title..." : "Fetch title from webpage"}
+                                    >
+                                      {isFetchingTitle ? (
+                                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                      ) : (
+                                        <Heading className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      )}
+                                    </Button>
+                                  )}
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1824,38 +1840,17 @@ export default function PocketImporter() {
                           </div>
                         </div>
 
-                        {/* Tags and Fetch Title Button Row */}
-                        <div className="flex items-center justify-between gap-2">
-                          {/* Tags Section */}
-                          <div className="flex items-center gap-1 sm:gap-2 flex-wrap flex-1 min-w-0">
-                            {article.parsedTags.length > 0 && (
-                              <>
-                                <Tag className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                                {article.parsedTags.map((tag, tagIndex) => (
-                                  <Badge key={tagIndex} variant="outline" className="text-xs h-5">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </>
-                            )}
-                          </div>
-
-                          {/* Fetch Title Button */}
-                          {articleNeedsTitle && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => fetchTitleFromUrl(article.url)}
-                              disabled={isFetchingTitle}
-                              className="ml-2 h-7 w-7 sm:h-8 sm:w-8 p-0 flex-shrink-0"
-                              title={isFetchingTitle ? "Fetching title..." : "Fetch title from webpage"}
-                            >
-                              {isFetchingTitle ? (
-                                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                              ) : (
-                                <Heading className="h-3 w-3 sm:h-4 sm:w-4" />
-                              )}
-                            </Button>
+                        {/* Tags Row */}
+                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                          {article.parsedTags.length > 0 && (
+                            <>
+                              <Tag className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                              {article.parsedTags.map((tag, tagIndex) => (
+                                <Badge key={tagIndex} variant="outline" className="text-xs h-5">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </>
                           )}
                         </div>
 

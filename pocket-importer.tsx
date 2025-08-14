@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useTheme } from "next-themes"
 import {
   Upload,
   FileText,
@@ -72,6 +73,7 @@ const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 const CACHE_KEY = "mypocket-reader-data"
 
 export default function PocketImporter() {
+  const { theme } = useTheme()
   const [articles, setArticles] = useState<Article[]>([])
   const [highlightData, setHighlightData] = useState<ArticleWithHighlights[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -120,6 +122,11 @@ export default function PocketImporter() {
   const [showCacheMenu, setShowCacheMenu] = useState(false)
   // Add confirmation dialog state
   const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false)
+
+  // New states for tag autocomplete
+  const [tagInputValue, setTagInputValue] = useState("")
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false)
+  const [selectedTagIndex, setSelectedTagIndex] = useState(-1)
 
   // Cache management functions
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
@@ -525,7 +532,10 @@ export default function PocketImporter() {
       const matchesSearch =
         !searchTerm ||
         article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        article.url.toLowerCase().includes(searchTerm.toLowerCase())
+        article.url.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getHighlightsForArticle(article.url).some((highlight) =>
+          highlight.quote.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
 
       const matchesFavorites = !showFavoritesOnly || article.isFavorite
       const matchesHighlights = !showHighlightsOnly || getHighlightsForArticle(article.url).length > 0
@@ -574,7 +584,10 @@ export default function PocketImporter() {
       const matchesSearch =
         !searchTerm ||
         article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        article.url.toLowerCase().includes(searchTerm.toLowerCase())
+        article.url.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getHighlightsForArticle(article.url).some((highlight) =>
+          highlight.quote.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
 
       const matchesTags = selectedTags.length === 0 || selectedTags.every((tag) => article.parsedTags.includes(tag))
 
@@ -708,6 +721,10 @@ export default function PocketImporter() {
     setNewArticleTitle("")
     setNewArticleTags("")
     setNewArticleIsFavorite(false)
+    // Reset tag input states
+    setTagInputValue("")
+    setShowTagSuggestions(false)
+    setSelectedTagIndex(-1)
   }, [])
 
   const saveNewArticle = useCallback(async () => {
@@ -769,6 +786,87 @@ export default function PocketImporter() {
     cancelAddingArticle,
     parseTagsAndFavorites,
   ])
+
+  // Tag management functions
+  const parseTagsFromInput = useCallback((input: string) => {
+    return input
+      .split("|")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+  }, [])
+
+  const getSelectedTags = useCallback(() => {
+    return parseTagsFromInput(newArticleTags)
+  }, [newArticleTags, parseTagsFromInput])
+
+  const getFilteredTagSuggestions = useCallback(() => {
+    const currentTags = getSelectedTags()
+    const inputValue = tagInputValue.toLowerCase().trim()
+
+    if (!inputValue) return []
+
+    return allUniqueTags
+      .filter((tag) => tag.toLowerCase().includes(inputValue) && !currentTags.includes(tag))
+      .slice(0, 8) // Limit to 8 suggestions
+  }, [tagInputValue, allUniqueTags, getSelectedTags])
+
+  const addTagFromSuggestion = useCallback(
+    (tag: string) => {
+      const currentTags = getSelectedTags()
+      const newTags = [...currentTags, tag].join("|")
+      setNewArticleTags(newTags)
+      setTagInputValue("")
+      setShowTagSuggestions(false)
+      setSelectedTagIndex(-1)
+    },
+    [getSelectedTags],
+  )
+
+  const removeTag = useCallback(
+    (tagToRemove: string) => {
+      const currentTags = getSelectedTags()
+      const newTags = currentTags.filter((tag) => tag !== tagToRemove).join("|")
+      setNewArticleTags(newTags)
+    },
+    [getSelectedTags],
+  )
+
+  const handleTagInputKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const suggestions = getFilteredTagSuggestions()
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault()
+        setSelectedTagIndex((prev) => Math.min(prev + 1, suggestions.length - 1))
+        setShowTagSuggestions(true)
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault()
+        setSelectedTagIndex((prev) => Math.max(prev - 1, -1))
+      } else if (e.key === "Enter" && selectedTagIndex >= 0 && suggestions[selectedTagIndex]) {
+        e.preventDefault()
+        addTagFromSuggestion(suggestions[selectedTagIndex])
+      } else if (e.key === "Enter" && tagInputValue.trim()) {
+        e.preventDefault()
+        addTagFromSuggestion(tagInputValue.trim())
+      } else if (e.key === "Escape") {
+        setShowTagSuggestions(false)
+        setSelectedTagIndex(-1)
+      } else if (e.key === "|" || e.key === "Tab") {
+        e.preventDefault()
+        if (tagInputValue.trim()) {
+          addTagFromSuggestion(tagInputValue.trim())
+        }
+      }
+    },
+    [getFilteredTagSuggestions, selectedTagIndex, tagInputValue, addTagFromSuggestion],
+  )
+
+  const handleTagInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setTagInputValue(value)
+    setShowTagSuggestions(value.trim().length > 0)
+    setSelectedTagIndex(-1)
+  }, [])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredArticles.length / itemsPerPage)
@@ -1140,20 +1238,78 @@ export default function PocketImporter() {
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="new-article-tags" className="text-sm font-medium mb-2 block">
-                      Tags <span className="text-xs text-muted-foreground">(separate with |)</span>
-                    </Label>
+                <div>
+                  <Label htmlFor="new-article-tags" className="text-sm font-medium mb-2 block">
+                    Tags <span className="text-xs text-muted-foreground">(type to see suggestions)</span>
+                  </Label>
+
+                  {/* Selected Tags Display */}
+                  {getSelectedTags().length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2 p-2 bg-muted/30 rounded-md">
+                      {getSelectedTags().map((tag, index) => (
+                        <Badge key={index} variant="secondary" className="flex items-center gap-1 text-xs">
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tag Input with Autocomplete */}
+                  <div className="relative">
                     <Input
                       id="new-article-tags"
                       type="text"
-                      placeholder="tag1|tag2|tag3"
-                      value={newArticleTags}
-                      onChange={(e) => setNewArticleTags(e.target.value)}
+                      placeholder={
+                        getSelectedTags().length > 0 ? "Add another tag..." : "Start typing to see suggestions..."
+                      }
+                      value={tagInputValue}
+                      onChange={handleTagInputChange}
+                      onKeyDown={handleTagInputKeyDown}
+                      onFocus={() => tagInputValue.trim() && setShowTagSuggestions(true)}
+                      onBlur={() => {
+                        // Delay hiding suggestions to allow clicking on them
+                        setTimeout(() => {
+                          setShowTagSuggestions(false)
+                          setSelectedTagIndex(-1)
+                        }, 200)
+                      }}
                       className="h-10"
                     />
+
+                    {/* Tag Suggestions Dropdown */}
+                    {showTagSuggestions && getFilteredTagSuggestions().length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                        {getFilteredTagSuggestions().map((tag, index) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => addTagFromSuggestion(tag)}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors ${
+                              index === selectedTagIndex ? "bg-muted" : ""
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{tag}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {articles.filter((a) => a.parsedTags.includes(tag)).length}
+                              </Badge>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Press Enter, Tab, or | to add a tag. Use arrow keys to navigate suggestions.
+                  </p>
                 </div>
 
                 <div className="flex items-center space-x-3">
@@ -1357,7 +1513,7 @@ export default function PocketImporter() {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="search"
-                          placeholder="Search by title or URL..."
+                          placeholder="Search by title, URL, or highlights..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-10 h-11 sm:h-10"
@@ -1659,7 +1815,7 @@ export default function PocketImporter() {
                                 title="Open article on Wayback Machine"
                               >
                                 <img
-                                  src="/internet-archive.svg"
+                                  src={theme === "dark" ? "/internet-archive-inverted.png" : "/internet-archive.svg"}
                                   alt="Internet Archive Wayback Machine"
                                   className="h-4 w-4"
                                 />

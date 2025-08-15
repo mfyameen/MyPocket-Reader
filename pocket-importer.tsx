@@ -24,8 +24,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Database,
   Trash2,
   RefreshCw,
@@ -2107,22 +2105,75 @@ export default function PocketImporter() {
             {/* Pagination Navigation */}
             {totalPages > 1 && (
               <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                    {/* Results summary */}
-                    <div className="text-sm text-muted-foreground order-2 sm:order-1">
-                      Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-                      <span className="font-medium">{Math.min(endIndex, filteredArticles.length)}</span> of{" "}
-                      <span className="font-medium">{filteredArticles.length}</span> results
+                <CardContent className="py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    {/* Main pagination controls */}
+                    <div className="flex items-center justify-center sm:justify-start gap-1 flex-wrap">
+                      {/* Previous page button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newPage = Math.max(1, currentPage - 1)
+                          setCurrentPage(newPage)
+                          scrollToArticlesList()
+                        }}
+                        disabled={currentPage === 1}
+                        className="h-8 px-3"
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Previous
+                      </Button>
+
+                      {/* Page numbers - show current ± 2 */}
+                      {(() => {
+                        const pages = []
+                        const start = Math.max(1, currentPage - 2)
+                        const end = Math.min(totalPages, currentPage + 2)
+
+                        for (let i = start; i <= end; i++) {
+                          pages.push(i)
+                        }
+
+                        return pages.map((pageNum) => (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setCurrentPage(pageNum)
+                              scrollToArticlesList()
+                            }}
+                            className="w-8 h-8 text-sm"
+                            aria-label={`Go to page ${pageNum}`}
+                            aria-current={currentPage === pageNum ? "page" : undefined}
+                          >
+                            {pageNum}
+                          </Button>
+                        ))
+                      })()}
+
+                      {/* Next page button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newPage = Math.min(totalPages, currentPage + 1)
+                          setCurrentPage(newPage)
+                          scrollToArticlesList()
+                        }}
+                        disabled={currentPage === totalPages}
+                        className="h-8 px-3"
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
                     </div>
 
                     {/* Jump to page input */}
-                    <div className="flex items-center gap-2 text-sm order-1 sm:order-2">
-                      <Label htmlFor="jump-to-page" className="whitespace-nowrap">
-                        Go to page:
-                      </Label>
+                    <div className="flex items-center justify-center sm:justify-end gap-2 text-sm">
+                      <span className="text-muted-foreground">Page</span>
                       <Input
-                        id="jump-to-page"
                         type="number"
                         min="1"
                         max={totalPages}
@@ -2149,144 +2200,8 @@ export default function PocketImporter() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-center gap-1">
-                    {/* First page button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setCurrentPage(1)
-                        scrollToArticlesList()
-                      }}
-                      disabled={currentPage === 1}
-                      className="h-9 sm:h-8 px-2"
-                      title="First page"
-                    >
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-
-                    {/* Previous page button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const newPage = Math.max(1, currentPage - 1)
-                        setCurrentPage(newPage)
-                        scrollToArticlesList()
-                      }}
-                      disabled={currentPage === 1}
-                      className="h-9 sm:h-8"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="hidden sm:inline ml-1">Previous</span>
-                    </Button>
-
-                    {/* Page numbers with smart truncation */}
-                    <div className="flex items-center gap-1">
-                      {(() => {
-                        const pages = []
-                        const showEllipsis = totalPages > 7
-
-                        if (!showEllipsis) {
-                          // Show all pages if 7 or fewer
-                          for (let i = 1; i <= totalPages; i++) {
-                            pages.push(i)
-                          }
-                        } else {
-                          // Smart pagination with ellipsis
-                          if (currentPage <= 4) {
-                            // Near the beginning: 1 2 3 4 5 ... 10
-                            pages.push(1, 2, 3, 4, 5)
-                            if (totalPages > 6) {
-                              pages.push("ellipsis-end")
-                              pages.push(totalPages)
-                            }
-                          } else if (currentPage >= totalPages - 3) {
-                            // Near the end: 1 ... 6 7 8 9 10
-                            pages.push(1)
-                            if (totalPages > 6) {
-                              pages.push("ellipsis-start")
-                            }
-                            for (let i = totalPages - 4; i <= totalPages; i++) {
-                              pages.push(i)
-                            }
-                          } else {
-                            // In the middle: 1 ... 4 5 6 ... 10
-                            pages.push(1)
-                            pages.push("ellipsis-start")
-                            pages.push(currentPage - 1, currentPage, currentPage + 1)
-                            pages.push("ellipsis-end")
-                            pages.push(totalPages)
-                          }
-                        }
-
-                        return pages.map((page, index) => {
-                          if (page === "ellipsis-start" || page === "ellipsis-end") {
-                            return (
-                              <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
-                                ...
-                              </span>
-                            )
-                          }
-
-                          const pageNum = page as number
-                          return (
-                            <Button
-                              key={pageNum}
-                              variant={currentPage === pageNum ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => {
-                                setCurrentPage(pageNum)
-                                scrollToArticlesList()
-                              }}
-                              className="w-9 h-9 sm:w-10 sm:h-8 text-sm"
-                              aria-label={`Go to page ${pageNum}`}
-                              aria-current={currentPage === pageNum ? "page" : undefined}
-                            >
-                              {pageNum}
-                            </Button>
-                          )
-                        })
-                      })()}
-                    </div>
-
-                    {/* Next page button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const newPage = Math.min(totalPages, currentPage + 1)
-                        setCurrentPage(newPage)
-                        scrollToArticlesList()
-                      }}
-                      disabled={currentPage === totalPages}
-                      className="h-9 sm:h-8"
-                    >
-                      <span className="hidden sm:inline mr-1">Next</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-
-                    {/* Last page button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setCurrentPage(totalPages)
-                        scrollToArticlesList()
-                      }}
-                      disabled={currentPage === totalPages}
-                      className="h-9 sm:h-8 px-2"
-                      title="Last page"
-                    >
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {/* Page info and keyboard shortcuts */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 pt-4 border-t">
-                    <div className="text-xs text-muted-foreground">
-                      Page {currentPage} of {totalPages}
-                    </div>
+                  {/* Keyboard shortcuts info - only show on desktop */}
+                  <div className="hidden sm:flex items-center justify-center mt-3 pt-3 border-t">
                     <div className="text-xs text-muted-foreground">Use ← → arrow keys to navigate pages</div>
                   </div>
                 </CardContent>

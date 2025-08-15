@@ -89,8 +89,8 @@ export default function PocketImporter() {
   const [editTitleValue, setEditTitleValue] = useState("")
 
   // Mobile UI state
-  const [showFilters, setShowFilters] = useState(false)
-  const [showStats, setShowStats] = useState(false)
+  const [showFilters, setShowFilters] = useState(true)
+  const [showStats, setShowStats] = useState(true)
 
   // New states for inline highlight editing
   const [addingHighlight, setAddingHighlight] = useState<string | null>(null)
@@ -1756,8 +1756,8 @@ export default function PocketImporter() {
             </Card>
 
             {/* Articles List */}
-            {/* Articles List - Responsive Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+            {/* Articles List - Masonry Layout */}
+            <div className="columns-1 md:columns-2 xl:columns-3 gap-4 sm:gap-6 space-y-4 sm:space-y-6">
               {paginatedArticles.map((article, index) => {
                 const highlights = getHighlightsForArticle(article.url)
                 const waybackMachineUrl = `https://web.archive.org/web/${article.url}`
@@ -1765,7 +1765,10 @@ export default function PocketImporter() {
                 const articleNeedsTitle = needsTitle(article)
 
                 return (
-                  <Card key={startIndex + index} className="group h-fit hover:shadow-md transition-shadow">
+                  <Card
+                    key={startIndex + index}
+                    className="group break-inside-avoid mb-4 sm:mb-6 hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="p-4">
                       <div className="space-y-3">
                         {/* Header with title and actions */}

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Database,
   Trash2,
   RefreshCw,
@@ -126,6 +128,9 @@ export default function PocketImporter() {
   const [tagInputValue, setTagInputValue] = useState("")
   const [showTagSuggestions, setShowTagSuggestions] = useState(false)
   const [selectedTagIndex, setSelectedTagIndex] = useState(-1)
+
+  // Add this after the existing state declarations (around line 85)
+  const articlesListRef = useRef<HTMLDivElement>(null)
 
   // Cache management functions with improved debugging
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
@@ -917,6 +922,16 @@ export default function PocketImporter() {
     setSelectedTagIndex(-1)
   }, [])
 
+  // Add this after the handleTagInputChange function (around line 650)
+  const scrollToArticlesList = useCallback(() => {
+    if (articlesListRef.current) {
+      articlesListRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      })
+    }
+  }, [])
+
   // Pagination calculations
   const totalPages = Math.ceil(filteredArticles.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -943,6 +958,66 @@ export default function PocketImporter() {
       setShowUploadSection(false)
     }
   }, [articles.length, highlightData.length])
+
+  // Add keyboard navigation for pagination
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if not typing in an input/textarea
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA" ||
+        totalPages <= 1
+      ) {
+        return
+      }
+
+      if (e.key === "ArrowLeft" && currentPage > 1) {
+        e.preventDefault()
+        setCurrentPage(currentPage - 1)
+        scrollToArticlesList()
+      } else if (e.key === "ArrowRight" && currentPage < totalPages) {
+        e.preventDefault()
+        setCurrentPage(currentPage + 1)
+        scrollToArticlesList()
+      } else if (e.key === "Home") {
+        e.preventDefault()
+        setCurrentPage(1)
+        scrollToArticlesList()
+      } else if (e.key === "End") {
+        e.preventDefault()
+        setCurrentPage(totalPages)
+        scrollToArticlesList()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [currentPage, totalPages, scrollToArticlesList])
+
+  // Sync pagination with URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const pageParam = params.get("page")
+    if (pageParam) {
+      const page = Number.parseInt(pageParam)
+      if (page >= 1 && page <= totalPages) {
+        setCurrentPage(page)
+      }
+    }
+  }, [totalPages])
+
+  // Update URL when page changes
+  useEffect(() => {
+    if (articles.length > 0) {
+      const url = new URL(window.location.href)
+      if (currentPage === 1) {
+        url.searchParams.delete("page")
+      } else {
+        url.searchParams.set("page", currentPage.toString())
+      }
+      window.history.replaceState({}, "", url.toString())
+    }
+  }, [currentPage, articles.length])
 
   const handleTagToggle = (tag: string) => {
     setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
@@ -1726,11 +1801,17 @@ export default function PocketImporter() {
                       )}
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                  {/* Pagination Controls */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t gap-4">
+            {/* Pagination Info - separate from filters */}
+            {articles.length > 0 && (
+              <Card>
+                <CardContent className="py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="items-per-page" className="text-xs font-medium">
+                      <Label htmlFor="items-per-page-main" className="text-sm font-medium">
                         Items per page:
                       </Label>
                       <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
@@ -1746,18 +1827,22 @@ export default function PocketImporter() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="text-xs text-muted-foreground text-center sm:text-right">
-                      Showing {startIndex + 1}-{Math.min(endIndex, filteredArticles.length)} of{" "}
-                      {filteredArticles.length} articles
+                    <div className="text-sm text-muted-foreground text-center sm:text-right">
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                      <span className="font-medium">{Math.min(endIndex, filteredArticles.length)}</span> of{" "}
+                      <span className="font-medium">{filteredArticles.length}</span> articles
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Articles List */}
             {/* Articles List - Masonry Layout */}
-            <div className="columns-1 md:columns-2 xl:columns-3 gap-4 sm:gap-6 space-y-4 sm:space-y-6">
+            <div
+              ref={articlesListRef}
+              className="columns-1 md:columns-2 xl:columns-3 gap-4 sm:gap-6 space-y-4 sm:space-y-6"
+            >
               {paginatedArticles.map((article, index) => {
                 const highlights = getHighlightsForArticle(article.url)
                 const waybackMachineUrl = `https://web.archive.org/web/${article.url}`
@@ -2023,11 +2108,72 @@ export default function PocketImporter() {
             {totalPages > 1 && (
               <Card>
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                    {/* Results summary */}
+                    <div className="text-sm text-muted-foreground order-2 sm:order-1">
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                      <span className="font-medium">{Math.min(endIndex, filteredArticles.length)}</span> of{" "}
+                      <span className="font-medium">{filteredArticles.length}</span> results
+                    </div>
+
+                    {/* Jump to page input */}
+                    <div className="flex items-center gap-2 text-sm order-1 sm:order-2">
+                      <Label htmlFor="jump-to-page" className="whitespace-nowrap">
+                        Go to page:
+                      </Label>
+                      <Input
+                        id="jump-to-page"
+                        type="number"
+                        min="1"
+                        max={totalPages}
+                        value={currentPage}
+                        onChange={(e) => {
+                          const page = Number.parseInt(e.target.value)
+                          if (page >= 1 && page <= totalPages) {
+                            setCurrentPage(page)
+                            scrollToArticlesList()
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const page = Number.parseInt((e.target as HTMLInputElement).value)
+                            if (page >= 1 && page <= totalPages) {
+                              setCurrentPage(page)
+                              scrollToArticlesList()
+                            }
+                          }
+                        }}
+                        className="w-16 h-8 text-center"
+                      />
+                      <span className="text-muted-foreground">of {totalPages}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-1">
+                    {/* First page button */}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      onClick={() => {
+                        setCurrentPage(1)
+                        scrollToArticlesList()
+                      }}
+                      disabled={currentPage === 1}
+                      className="h-9 sm:h-8 px-2"
+                      title="First page"
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+
+                    {/* Previous page button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newPage = Math.max(1, currentPage - 1)
+                        setCurrentPage(newPage)
+                        scrollToArticlesList()
+                      }}
                       disabled={currentPage === 1}
                       className="h-9 sm:h-8"
                     >
@@ -2035,46 +2181,113 @@ export default function PocketImporter() {
                       <span className="hidden sm:inline ml-1">Previous</span>
                     </Button>
 
+                    {/* Page numbers with smart truncation */}
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum
-                        if (totalPages <= 5) {
-                          pageNum = i + 1
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i
+                      {(() => {
+                        const pages = []
+                        const showEllipsis = totalPages > 7
+
+                        if (!showEllipsis) {
+                          // Show all pages if 7 or fewer
+                          for (let i = 1; i <= totalPages; i++) {
+                            pages.push(i)
+                          }
                         } else {
-                          pageNum = currentPage - 2 + i
+                          // Smart pagination with ellipsis
+                          if (currentPage <= 4) {
+                            // Near the beginning: 1 2 3 4 5 ... 10
+                            pages.push(1, 2, 3, 4, 5)
+                            if (totalPages > 6) {
+                              pages.push("ellipsis-end")
+                              pages.push(totalPages)
+                            }
+                          } else if (currentPage >= totalPages - 3) {
+                            // Near the end: 1 ... 6 7 8 9 10
+                            pages.push(1)
+                            if (totalPages > 6) {
+                              pages.push("ellipsis-start")
+                            }
+                            for (let i = totalPages - 4; i <= totalPages; i++) {
+                              pages.push(i)
+                            }
+                          } else {
+                            // In the middle: 1 ... 4 5 6 ... 10
+                            pages.push(1)
+                            pages.push("ellipsis-start")
+                            pages.push(currentPage - 1, currentPage, currentPage + 1)
+                            pages.push("ellipsis-end")
+                            pages.push(totalPages)
+                          }
                         }
 
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={currentPage === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setCurrentPage(pageNum)}
-                            className="w-9 h-9 sm:w-10 sm:h-8 text-sm"
-                          >
-                            {pageNum}
-                          </Button>
-                        )
-                      })}
+                        return pages.map((page, index) => {
+                          if (page === "ellipsis-start" || page === "ellipsis-end") {
+                            return (
+                              <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
+                                ...
+                              </span>
+                            )
+                          }
+
+                          const pageNum = page as number
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={currentPage === pageNum ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                setCurrentPage(pageNum)
+                                scrollToArticlesList()
+                              }}
+                              className="w-9 h-9 sm:w-10 sm:h-8 text-sm"
+                              aria-label={`Go to page ${pageNum}`}
+                              aria-current={currentPage === pageNum ? "page" : undefined}
+                            >
+                              {pageNum}
+                            </Button>
+                          )
+                        })
+                      })()}
                     </div>
 
+                    {/* Next page button */}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      onClick={() => {
+                        const newPage = Math.min(totalPages, currentPage + 1)
+                        setCurrentPage(newPage)
+                        scrollToArticlesList()
+                      }}
                       disabled={currentPage === totalPages}
                       className="h-9 sm:h-8"
                     >
                       <span className="hidden sm:inline mr-1">Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
+
+                    {/* Last page button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCurrentPage(totalPages)
+                        scrollToArticlesList()
+                      }}
+                      disabled={currentPage === totalPages}
+                      className="h-9 sm:h-8 px-2"
+                      title="Last page"
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div className="text-center text-xs sm:text-sm text-muted-foreground mt-2">
-                    Page {currentPage} of {totalPages}
+
+                  {/* Page info and keyboard shortcuts */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 pt-4 border-t">
+                    <div className="text-xs text-muted-foreground">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Use ← → arrow keys to navigate pages</div>
                   </div>
                 </CardContent>
               </Card>

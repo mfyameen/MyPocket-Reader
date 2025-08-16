@@ -2107,8 +2107,8 @@ export default function PocketImporter() {
               <Card>
                 <CardContent className="py-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    {/* Main pagination controls */}
-                    <div className="flex items-center justify-center sm:justify-start gap-1 flex-wrap">
+                    {/* Main pagination controls - single row on mobile */}
+                    <div className="flex items-center justify-center gap-1">
                       {/* Previous page button */}
                       <Button
                         variant="outline"
@@ -2119,10 +2119,11 @@ export default function PocketImporter() {
                           scrollToArticlesList()
                         }}
                         disabled={currentPage === 1}
-                        className="h-8 px-3"
+                        className="h-8 px-2 sm:px-3"
+                        aria-label="Go to previous page"
                       >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Previous
+                        <ChevronLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline ml-1">Previous</span>
                       </Button>
 
                       {/* Page numbers - show current ± 2 */}
@@ -2163,10 +2164,11 @@ export default function PocketImporter() {
                           scrollToArticlesList()
                         }}
                         disabled={currentPage === totalPages}
-                        className="h-8 px-3"
+                        className="h-8 px-2 sm:px-3"
+                        aria-label="Go to next page"
                       >
-                        Next
-                        <ChevronRight className="h-4 w-4 ml-1" />
+                        <span className="hidden sm:inline mr-1">Next</span>
+                        <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
 

@@ -351,12 +351,15 @@ export default function PocketImporter() {
           .map((row: any) => {
             const { tags, isFavorite } = parseTagsAndFavorites(row.tags || "")
 
+            // Map Pocket's "archive" status to "read" since archived items are read items in Pocket
+            const mappedStatus = row.status === "archive" ? "read" : (row.status || "unread")
+            
             return {
               title: row.title || "",
               url: row.url || "",
               time_added: Number.parseInt(row.time_added) || 0,
               tags: row.tags || "",
-              status: row.status || "unread",
+              status: mappedStatus,
               isFavorite,
               parsedTags: tags,
             } as Article

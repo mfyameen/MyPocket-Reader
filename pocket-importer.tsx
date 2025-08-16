@@ -587,7 +587,7 @@ export default function PocketImporter() {
       const matchesReadStatus =
         (!showReadOnly && !showUnreadOnly) ||
         (showReadOnly && article.status === "read") ||
-        (showUnreadOnly && article.status !== "read")
+        (showUnreadOnly && article.status === "unread")
 
       return matchesSearch && matchesFavorites && matchesHighlights && matchesReadStatus
     })
@@ -643,7 +643,7 @@ export default function PocketImporter() {
       const matchesReadStatus =
         (!showReadOnly && !showUnreadOnly) ||
         (showReadOnly && article.status === "read") ||
-        (showUnreadOnly && article.status !== "read")
+        (showUnreadOnly && article.status === "unread")
 
       return matchesSearch && matchesTags && matchesFavorites && matchesHighlights && matchesReadStatus
     })
@@ -1028,7 +1028,7 @@ export default function PocketImporter() {
   const stats = {
     totalArticles: articles.length,
     readArticles: articles.filter((a) => a.status === "read").length,
-    unreadArticles: articles.filter((a) => a.status !== "read").length,
+    unreadArticles: articles.filter((a) => a.status === "unread").length,
     favoriteArticles: articles.filter((a) => a.isFavorite).length,
     articlesWithHighlights: highlightData.length,
     totalHighlights: highlightData.reduce((sum, item) => sum + item.highlights.length, 0),

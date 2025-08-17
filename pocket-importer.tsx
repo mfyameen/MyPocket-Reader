@@ -1907,7 +1907,7 @@ export default function PocketImporter() {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="font-semibold text-sm leading-tight hover:text-primary transition-colors cursor-pointer block break-words line-clamp-3"
-                                    title={`${article.title || article.url}\n\nClick to open article`}
+                                    title={`Click to open ${article.url}`}
                                   >
                                     {article.title || article.url}
                                   </a>

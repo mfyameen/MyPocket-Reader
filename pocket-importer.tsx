@@ -2085,7 +2085,8 @@ export default function PocketImporter() {
 
                             {/* Action buttons */}
                             <div className="flex gap-1 flex-shrink-0">
-                              {articleNeedsTitle && editingTitle !== article.url && (
+                              {/* TODO: Implement server-side title fetching and re-enable this button. */}
+                              {/* {articleNeedsTitle && editingTitle !== article.url && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -2100,7 +2101,7 @@ export default function PocketImporter() {
                                     <Heading className="h-3 w-3" />
                                   )}
                                 </Button>
-                              )}
+                              )} */}
                               {editingTitle !== article.url && (
                                 <Button
                                   variant="ghost"

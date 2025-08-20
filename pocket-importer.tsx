@@ -41,6 +41,8 @@ import {
 
 import Papa from "papaparse"
 import JSZip from "jszip"
+// SECURITY: Import DOMPurify for HTML sanitization to prevent XSS attacks
+import DOMPurify from "dompurify"
 
 interface Article {
   title: string
@@ -71,6 +73,16 @@ interface CachedData {
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 const CACHE_KEY = "mypocket-reader-data"
+
+// SECURITY: Storage limits to prevent DoS attacks
+const MAX_STORAGE_SIZE = 50 * 1024 * 1024 // 50MB
+const MAX_ARTICLES = 50000 // Reasonable limit
+const MAX_HIGHLIGHTS = 100000 // Reasonable limit
+
+// SECURITY: Warning thresholds (80% of limits)
+const STORAGE_WARNING_THRESHOLD = MAX_STORAGE_SIZE * 0.8 // 40MB
+const ARTICLES_WARNING_THRESHOLD = MAX_ARTICLES * 0.8 // 40,000
+const HIGHLIGHTS_WARNING_THRESHOLD = MAX_HIGHLIGHTS * 0.8 // 80,000
 
 export default function PocketImporter() {
   const { theme } = useTheme()
@@ -131,7 +143,81 @@ export default function PocketImporter() {
   // Add this after the existing state declarations (around line 85)
   const articlesListRef = useRef<HTMLDivElement>(null)
 
-  // Cache management functions with improved debugging
+  // SECURITY: HTML sanitization functions to prevent XSS attacks
+  const sanitizeString = useCallback((input: string): string => {
+    if (!input || typeof input !== 'string') return ''
+    
+    // Sanitize with very strict settings - allow no HTML tags
+    const clean = DOMPurify.sanitize(input, {
+      ALLOWED_TAGS: [], // No HTML tags allowed
+      ALLOWED_ATTR: [], // No attributes allowed
+      KEEP_CONTENT: true, // Keep text content
+      ALLOW_DATA_ATTR: false,
+      ALLOW_UNKNOWN_PROTOCOLS: false,
+      ALLOWED_URI_REGEXP: /^https?:\/\//i, // Only HTTP/HTTPS URLs
+    })
+    
+    // Log sanitization if content was modified (potential XSS attempt)
+    if (clean !== input) {
+      console.warn('🔒 SECURITY: Content sanitized, potential XSS attempt blocked:', {
+        original: input.substring(0, 100) + '...',
+        sanitized: clean.substring(0, 100) + '...',
+        timestamp: new Date().toISOString()
+      })
+    }
+    
+    return clean
+  }, [])
+
+  const sanitizeUrl = useCallback((input: string): string => {
+    if (!input || typeof input !== 'string') return ''
+    
+    // Basic URL validation and sanitization
+    try {
+      // Remove any potential script: or data: URLs and other dangerous protocols
+      const clean = DOMPurify.sanitize(input, {
+        ALLOWED_TAGS: [],
+        ALLOWED_ATTR: [],
+        KEEP_CONTENT: true,
+        ALLOWED_URI_REGEXP: /^https?:\/\//i, // Only HTTP/HTTPS
+      })
+      
+      // Additional validation - must start with http:// or https://
+      if (!clean.match(/^https?:\/\//i)) {
+        console.warn('🔒 SECURITY: Invalid URL protocol blocked:', input)
+        return '' // Return empty string for invalid URLs
+      }
+      
+      return clean
+    } catch (error) {
+      console.warn('🔒 SECURITY: URL sanitization failed:', input, error)
+      return ''
+    }
+  }, [])
+
+  const sanitizeHighlight = useCallback((input: string): string => {
+    if (!input || typeof input !== 'string') return ''
+    
+    // Sanitize highlight quotes - allow no HTML but preserve formatting
+    const clean = DOMPurify.sanitize(input, {
+      ALLOWED_TAGS: [], // No HTML tags in highlights
+      ALLOWED_ATTR: [],
+      KEEP_CONTENT: true,
+      ALLOW_DATA_ATTR: false,
+      ALLOW_UNKNOWN_PROTOCOLS: false,
+    })
+    
+    if (clean !== input) {
+      console.warn('🔒 SECURITY: Highlight content sanitized:', {
+        original: input.substring(0, 50) + '...',
+        sanitized: clean.substring(0, 50) + '...'
+      })
+    }
+    
+    return clean
+  }, [])
+
+  // Cache management functions with improved debugging and security limits
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
     try {
       console.log("💾 Saving to cache:", {
@@ -140,25 +226,101 @@ export default function PocketImporter() {
         timestamp: new Date().toISOString(),
       })
 
+      // SECURITY: Validate data limits before saving
+      if (articlesData.length > MAX_ARTICLES) {
+        const errorMsg = `🚨 Security Limit Exceeded: Too many articles (${articlesData.length.toLocaleString()}). Maximum allowed: ${MAX_ARTICLES.toLocaleString()}.`
+        console.error(errorMsg)
+        alert(
+          "Security Limit Exceeded\n\n" +
+          `You have ${articlesData.length.toLocaleString()} articles, but the maximum allowed is ${MAX_ARTICLES.toLocaleString()}.\n\n` +
+          "This limit prevents potential browser crashes and protects your device's performance.\n\n" +
+          "Please reduce the number of articles or contact support for assistance."
+        )
+        throw new Error(errorMsg)
+      }
+
+      const totalHighlights = highlightsData.reduce((sum, item) => sum + item.highlights.length, 0)
+      if (totalHighlights > MAX_HIGHLIGHTS) {
+        const errorMsg = `🚨 Security Limit Exceeded: Too many highlights (${totalHighlights.toLocaleString()}). Maximum allowed: ${MAX_HIGHLIGHTS.toLocaleString()}.`
+        console.error(errorMsg)
+        alert(
+          "Security Limit Exceeded\n\n" +
+          `You have ${totalHighlights.toLocaleString()} highlights, but the maximum allowed is ${MAX_HIGHLIGHTS.toLocaleString()}.\n\n` +
+          "This limit prevents potential browser crashes and protects your device's performance.\n\n" +
+          "Please reduce the number of highlights or contact support for assistance."
+        )
+        throw new Error(errorMsg)
+      }
+
       const cacheData: CachedData = {
         articles: articlesData,
         highlightData: highlightsData,
         timestamp: Date.now(),
       }
       const dataString = JSON.stringify(cacheData)
+      const dataSize = new Blob([dataString]).size
+
+      // SECURITY: Validate storage size before saving
+      if (dataSize > MAX_STORAGE_SIZE) {
+        const errorMsg = `🚨 Security Limit Exceeded: Data too large (${formatBytes(dataSize)}). Maximum allowed: ${formatBytes(MAX_STORAGE_SIZE)}.`
+        console.error(errorMsg)
+        alert(
+          "Security Limit Exceeded\n\n" +
+          `Your data size is ${formatBytes(dataSize)}, but the maximum allowed is ${formatBytes(MAX_STORAGE_SIZE)}.\n\n` +
+          "This limit prevents browser crashes and storage exhaustion attacks.\n\n" +
+          "Please reduce the amount of data or contact support for assistance."
+        )
+        throw new Error(errorMsg)
+      }
+
       localStorage.setItem(CACHE_KEY, dataString)
 
       // Update cache info
       setCacheInfo({
         timestamp: cacheData.timestamp,
-        size: formatBytes(new Blob([dataString]).size),
+        size: formatBytes(dataSize),
       })
 
-      console.log("✅ Cache saved successfully")
+      // SECURITY: Check for approaching limits and warn users
+      let warnings = []
+      
+      if (articlesData.length >= ARTICLES_WARNING_THRESHOLD && articlesData.length < MAX_ARTICLES) {
+        warnings.push(`⚠️ You have ${articlesData.length.toLocaleString()} articles (${Math.round(articlesData.length / MAX_ARTICLES * 100)}% of limit). Consider cleaning up old articles.`)
+      }
+      
+      if (totalHighlights >= HIGHLIGHTS_WARNING_THRESHOLD && totalHighlights < MAX_HIGHLIGHTS) {
+        warnings.push(`⚠️ You have ${totalHighlights.toLocaleString()} highlights (${Math.round(totalHighlights / MAX_HIGHLIGHTS * 100)}% of limit). Consider removing old highlights.`)
+      }
+      
+      if (dataSize >= STORAGE_WARNING_THRESHOLD && dataSize < MAX_STORAGE_SIZE) {
+        warnings.push(`⚠️ Data size is ${formatBytes(dataSize)} (${Math.round(dataSize / MAX_STORAGE_SIZE * 100)}% of limit). Consider reducing data.`)
+      }
+      
+      // Show warnings to user if any exist
+      if (warnings.length > 0) {
+        const warningMessage = "Storage Usage Warning\n\n" + warnings.join('\n\n') + "\n\nYou can continue using the app, but consider cleaning up data to avoid hitting limits."
+        
+        // Only show warning once per session to avoid spam
+        const warningKey = `storage-warning-${Math.floor(Date.now() / (1000 * 60 * 60))}` // One warning per hour
+        if (!sessionStorage.getItem(warningKey)) {
+          console.warn('📊 STORAGE WARNING:', warnings)
+          alert(warningMessage)
+          sessionStorage.setItem(warningKey, 'shown')
+        }
+      }
+
+      console.log("✅ Cache saved successfully - Security checks passed:", {
+        articles: `${articlesData.length.toLocaleString()}/${MAX_ARTICLES.toLocaleString()}`,
+        highlights: `${totalHighlights.toLocaleString()}/${MAX_HIGHLIGHTS.toLocaleString()}`,
+        size: `${formatBytes(dataSize)}/${formatBytes(MAX_STORAGE_SIZE)}`
+      })
     } catch (error) {
       console.error("❌ Failed to save data to cache:", error)
-      // Show user-visible error
-      alert("Failed to save data to cache. Your changes may not be persisted.")
+      // Show user-visible error (but don't show the same alert twice)
+      if (!(error instanceof Error) || !error.message.includes("Security Limit Exceeded")) {
+        alert("Failed to save data to cache. Your changes may not be persisted.")
+      }
+      throw error // Re-throw to prevent further processing
     }
   }, [])
 
@@ -350,22 +512,34 @@ export default function PocketImporter() {
 
         return result.data
           .map((row: any) => {
-            const { tags, isFavorite } = parseTagsAndFavorites(row.tags || "")
+            // SECURITY: Sanitize all user input from CSV to prevent XSS attacks
+            const sanitizedTitle = sanitizeString(row.title || "")
+            const sanitizedUrl = sanitizeUrl(row.url || "")
+            const sanitizedTags = sanitizeString(row.tags || "")
+            const sanitizedStatus = sanitizeString(row.status || "unread")
+            
+            // Skip rows with invalid URLs after sanitization
+            if (!sanitizedUrl && row.url) {
+              console.warn('🔒 SECURITY: Skipping article with invalid URL:', row.url)
+              return null
+            }
+            
+            const { tags, isFavorite } = parseTagsAndFavorites(sanitizedTags)
 
             // Map Pocket's "archive" status to "read" since archived items are read items in Pocket
-            const mappedStatus = row.status === "archive" ? "read" : (row.status || "unread")
+            const mappedStatus = sanitizedStatus === "archive" ? "read" : (sanitizedStatus || "unread")
             
             return {
-              title: row.title || "",
-              url: row.url || "",
+              title: sanitizedTitle,
+              url: sanitizedUrl,
               time_added: Number.parseInt(row.time_added) || 0,
-              tags: row.tags || "",
+              tags: sanitizedTags,
               status: mappedStatus,
               isFavorite,
-              parsedTags: tags,
+              parsedTags: tags.map(tag => sanitizeString(tag)), // Also sanitize individual tags
             } as Article
           })
-          .filter((article) => article.title || article.url) // Filter out completely empty rows
+          .filter((article): article is Article => article !== null && Boolean(article.title || article.url)) // Filter out null and empty rows with proper type guard
       } catch (error) {
         console.error("Error parsing CSV with Papa Parse:", error)
         throw new Error("Failed to parse CSV file. Please check the file format.")
@@ -408,13 +582,24 @@ export default function PocketImporter() {
     try {
       const text = await file.text()
       const parsedHighlights = JSON.parse(text) as ArticleWithHighlights[]
-      setHighlightData(parsedHighlights)
+      
+      // SECURITY: Sanitize all highlights content to prevent XSS attacks
+      const sanitizedHighlights = parsedHighlights.map(article => ({
+        url: sanitizeUrl(article.url || ''),
+        title: sanitizeString(article.title || ''),
+        highlights: article.highlights.map(highlight => ({
+          quote: sanitizeHighlight(highlight.quote || ''),
+          created_at: highlight.created_at || 0
+        }))
+      })).filter(article => article.url) // Filter out articles with invalid URLs
+      
+      setHighlightData(sanitizedHighlights)
     } catch (error) {
       console.error("Error parsing JSON:", error)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [sanitizeUrl, sanitizeString, sanitizeHighlight])
 
   const handleZipUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -430,9 +615,9 @@ export default function PocketImporter() {
         let jsonFile: JSZip.JSZipObject | null = null
 
         // Look for CSV and JSON files
-        Object.keys(zipContent.files).forEach((filename) => {
+        for (const filename of Object.keys(zipContent.files)) {
           const file = zipContent.files[filename]
-          if (!file.dir) {
+          if (file && !file.dir) {
             // Skip directories
             const lowerName = filename.toLowerCase()
             if (lowerName.endsWith(".csv") && !csvFile) {
@@ -441,10 +626,10 @@ export default function PocketImporter() {
               jsonFile = file
             }
           }
-        })
+        }
 
         // Process CSV file if found
-        if (csvFile) {
+        if (csvFile && typeof csvFile.async === 'function') {
           try {
             const csvText = await csvFile.async("text")
             const parsedArticles = parseCSV(csvText)
@@ -458,7 +643,7 @@ export default function PocketImporter() {
         }
 
         // Process JSON file if found
-        if (jsonFile) {
+        if (jsonFile && typeof jsonFile.async === 'function') {
           try {
             const jsonText = await jsonFile.async("text")
             const parsedHighlights = JSON.parse(jsonText) as ArticleWithHighlights[]
@@ -509,65 +694,20 @@ export default function PocketImporter() {
     return highlightData.find((item) => item.url === url)?.highlights || []
   }
 
-  // Function to fetch title from URL - improved with better error handling and debugging
+  // SECURITY: Title fetching temporarily disabled
+  // Previous implementation sent user URLs to external service (privacy/security risk)
+  // TODO: Implement server-side title fetching API route for secure title retrieval
   const fetchTitleFromUrl = useCallback(async (url: string) => {
-    console.log(`🔍 Starting title fetch for: ${url}`)
-
-    try {
-      // Add URL to fetching set
-      setFetchingTitles((prev) => {
-        const newSet = new Set(prev).add(url)
-        console.log(`⏳ Added to fetching set. Currently fetching: ${Array.from(newSet).length} titles`)
-        return newSet
-      })
-
-      // Use a CORS proxy service to fetch the page
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
-      const response = await fetch(proxyUrl)
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      const html = data.contents
-
-      // Parse HTML to extract title
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(html, "text/html")
-      const titleElement = doc.querySelector("title")
-      const extractedTitle = titleElement?.textContent?.trim()
-
-      if (extractedTitle && extractedTitle !== url) {
-        console.log(`✅ Title fetched successfully for ${url}: "${extractedTitle}"`)
-
-        // Update the article with the new title
-        setArticles((prevArticles) => {
-          const updatedArticles = prevArticles.map((article) =>
-            article.url === url ? { ...article, title: extractedTitle } : article,
-          )
-
-          console.log(`📝 Updated articles state with new title for ${url}`)
-          return updatedArticles
-        })
-
-        return extractedTitle
-      } else {
-        throw new Error("No title found or title is same as URL")
-      }
-    } catch (error) {
-      console.error(`❌ Failed to fetch title for ${url}:`, error)
-      // You could show a toast notification here
-      return null
-    } finally {
-      // Remove URL from fetching set
-      setFetchingTitles((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(url)
-        console.log(`✅ Removed from fetching set. Currently fetching: ${Array.from(newSet).length} titles`)
-        return newSet
-      })
-    }
+    console.log(`🔒 Title fetching disabled for security. URL: ${url}`)
+    
+    // Show user notification that title fetching is disabled for security
+    alert(
+      "⚠️ Security Notice: Automatic title fetching is temporarily disabled to protect your privacy.\n\n" +
+      "Please manually enter the article title, or it will default to the URL.\n\n" +
+      "This prevents your article URLs from being sent to external services."
+    )
+    
+    return null // Return null to indicate no title was fetched
   }, [])
 
   // Function to check if an article needs a title (title is empty or same as URL)
@@ -691,11 +831,20 @@ export default function PocketImporter() {
   const saveEditedTitle = useCallback(
     (url: string) => {
       if (editTitleValue.trim()) {
-        console.log(`📝 Saving edited title for ${url}: "${editTitleValue.trim()}"`)
+        // SECURITY: Sanitize the edited title to prevent XSS attacks
+        const sanitizedTitle = sanitizeString(editTitleValue.trim())
+        
+        if (!sanitizedTitle) {
+          console.warn('🔒 SECURITY: Empty title after sanitization, not saving')
+          alert('Invalid title text. Please enter safe content.')
+          return
+        }
+        
+        console.log(`📝 Saving edited title for ${url}: "${sanitizedTitle}"`)
 
         setArticles((prevArticles) => {
           const updatedArticles = prevArticles.map((article) =>
-            article.url === url ? { ...article, title: editTitleValue.trim() } : article,
+            article.url === url ? { ...article, title: sanitizedTitle } : article,
           )
 
           console.log(`✅ Updated articles state with edited title for ${url}`)
@@ -705,7 +854,7 @@ export default function PocketImporter() {
       setEditingTitle(null)
       setEditTitleValue("")
     },
-    [editTitleValue],
+    [editTitleValue, sanitizeString],
   )
 
   const cancelEditingTitle = useCallback(() => {
@@ -723,8 +872,17 @@ export default function PocketImporter() {
   const saveNewHighlight = useCallback(
     (url: string) => {
       if (newHighlightText.trim()) {
+        // SECURITY: Sanitize the highlight text to prevent XSS attacks
+        const sanitizedQuote = sanitizeHighlight(newHighlightText.trim())
+        
+        if (!sanitizedQuote) {
+          console.warn('🔒 SECURITY: Empty highlight after sanitization, not saving')
+          alert('Invalid highlight text. Please enter safe content.')
+          return
+        }
+        
         const newHighlight: Highlight = {
-          quote: newHighlightText.trim(),
+          quote: sanitizedQuote,
           created_at: Math.floor(Date.now() / 1000), // Unix timestamp
         }
 
@@ -753,7 +911,7 @@ export default function PocketImporter() {
       setAddingHighlight(null)
       setNewHighlightText("")
     },
-    [newHighlightText, articles],
+    [newHighlightText, articles, sanitizeHighlight],
   )
 
   // New function to cancel adding a highlight

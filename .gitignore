@@ -11,6 +11,9 @@ coverage/
 out/
 build/
 
+# TypeScript
+*.tsbuildinfo
+
 # Production
 dist/
 

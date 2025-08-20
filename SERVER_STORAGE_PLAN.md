@@ -66,12 +66,12 @@ This document outlines a strategic plan to add server-side storage to MyPocket R
 - Automatic scaling
 
 **Implementation:**
-```bash
+\`\`\`bash
 pnpm add @vercel/kv
-```
+\`\`\`
 
 **Code Structure:**
-```typescript
+\`\`\`typescript
 // lib/storage.ts
 import { kv } from '@vercel/kv';
 
@@ -88,7 +88,7 @@ export async function saveUserData(userId: string, data: UserData) {
 export async function getUserData(userId: string): Promise<UserData | null> {
   return await kv.get(`user:${userId}`);
 }
-```
+\`\`\`
 
 ### Option 2: Vercel Postgres (Neon)
 
@@ -119,7 +119,7 @@ export async function getUserData(userId: string): Promise<UserData | null> {
 **Goal:** Add server sync while maintaining local-first performance
 
 **Implementation:**
-```typescript
+\`\`\`typescript
 // utils/storage.ts
 export class DataStorage {
   private static async saveToServer(userId: string, data: CachedData) {
@@ -144,10 +144,10 @@ export class DataStorage {
     await this.saveToServer(userId, data);
   }
 }
-```
+\`\`\`
 
 **API Routes:**
-```typescript
+\`\`\`typescript
 // app/api/user-data/route.ts
 import { kv } from '@vercel/kv';
 import { NextRequest, NextResponse } from 'next/server';
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
   const data = await kv.get(`user:${userId}`);
   return NextResponse.json({ data });
 }
-```
+\`\`\`
 
 ### Phase 2: User Authentication (Week 3)
 **Goal:** Simple user identification for data isolation
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
 ## Data Architecture
 
 ### Current Data Models (Preserve)
-```typescript
+\`\`\`typescript
 interface Article {
   title: string
   url: string
@@ -236,10 +236,10 @@ interface CachedData {
   highlightData: ArticleWithHighlights[]
   timestamp: number
 }
-```
+\`\`\`
 
 ### Enhanced Data Models (Future)
-```typescript
+\`\`\`typescript
 interface UserProfile {
   id: string
   email?: string
@@ -257,7 +257,7 @@ interface SyncMetadata {
   lastServerUpdate: number
   conflictResolution: 'client-wins' | 'server-wins' | 'merge'
 }
-```
+\`\`\`
 
 ## Security Considerations
 
@@ -336,9 +336,9 @@ interface SyncMetadata {
 4. **Minimal complexity**: Deploy in minutes, not days
 
 ### Market Position
-```
+\`\`\`
 Simple Bookmarker ←→ [MyPocket Reader + Sync] ←→ Full Omnivore Platform
-```
+\`\`\`
 
 ## Decision Framework
 

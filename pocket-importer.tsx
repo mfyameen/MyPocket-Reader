@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import Image from "next/image"
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
@@ -1053,7 +1054,16 @@ export default function PocketImporter() {
       <div className="container mx-auto py-4 sm:py-8 px-4">
         <div className="mb-6 sm:mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-4xl font-bold mb-2">MyPocket Reader</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <Image
+                src="/pocket-icon.jpg"
+                alt="MyPocket Reader"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
+              <h1 className="text-2xl lg:text-4xl font-bold">MyPocket Reader</h1>
+            </div>
             <p className="text-muted-foreground text-sm lg:text-base">
               {"RIP Pocket. Import and explore your articles and highlights."}
             </p>

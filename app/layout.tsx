@@ -10,7 +10,12 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "MyPocket Reader",
   description: "Import and explore your Pocket articles and highlights",
-    generator: 'v0.dev'
+  generator: 'v0.dev',
+  icons: {
+    icon: '/pocket-icon.jpg',
+    shortcut: '/pocket-icon.jpg',
+    apple: '/pocket-icon.jpg',
+  },
 }
 
 export default function RootLayout({

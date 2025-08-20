@@ -53,3 +53,6 @@ Thumbs.db
 # Temporary folders
 tmp/
 temp/
+
+# Warp AI documentation
+WARP.md

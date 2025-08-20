@@ -22,11 +22,11 @@
 - [ ] Add user consent dialog before any external requests
 
 **Code Changes:**
-```javascript
+\`\`\`javascript
 // COMPLETED: Replaced external CORS proxy with security notice
 // COMPLETED: Users now get warning about privacy protection
 // TODO: Server-side implementation for secure title fetching
-```
+\`\`\`
 
 **Notes:** 
 - **Date:** 2025-08-20
@@ -56,7 +56,7 @@
   - [x] Individual tag sanitization
 
 **Code Changes:**
-```javascript
+\`\`\`javascript
 // COMPLETED: Comprehensive HTML sanitization implementation
 import DOMPurify from 'dompurify';
 
@@ -77,7 +77,7 @@ const sanitizeString = (input: string): string => {
   // Security logging included
   return clean;
 };
-```
+\`\`\`
 
 **Notes:** 
 - **Date:** 2025-08-20
@@ -108,7 +108,7 @@ const sanitizeString = (input: string): string => {
 - [x] Graceful degradation when storage full
 
 **Code Changes:**
-```javascript
+\`\`\`javascript
 // COMPLETED: Comprehensive storage limits implementation
 const MAX_STORAGE_SIZE = 50 * 1024 * 1024; // 50MB
 const MAX_ARTICLES = 50000; // Reasonable limit
@@ -136,7 +136,7 @@ if (totalHighlights > MAX_HIGHLIGHTS) {
 if (articlesData.length >= ARTICLES_WARNING_THRESHOLD && articlesData.length < MAX_ARTICLES) {
   warnings.push(`⚠️ You have ${articlesData.length.toLocaleString()} articles (${Math.round(articlesData.length / MAX_ARTICLES * 100)}% of limit). Consider cleaning up old articles.`);
 }
-```
+\`\`\`
 
 **Notes:** 
 - **Date:** 2025-08-20  
@@ -167,7 +167,7 @@ if (articlesData.length >= ARTICLES_WARNING_THRESHOLD && articlesData.length < M
 - [x] Test build process
 
 **Code Changes:**
-```javascript
+\`\`\`javascript
 // next.config.mjs
 const nextConfig = {
   eslint: {
@@ -196,7 +196,7 @@ const nextConfig = {
     "security/detect-pseudoRandomBytes": "error"
   }
 }
-```
+\`\`\`
 
 **Notes:** 
 - **Date:** 2025-08-20
@@ -227,7 +227,7 @@ const nextConfig = {
 - [ ] Gradual rollout with report-only mode first
 
 **Code Changes:**
-```javascript
+\`\`\`javascript
 // In next.config.mjs - headers configuration
 headers: [
   {
@@ -240,7 +240,7 @@ headers: [
     ]
   }
 ]
-```
+\`\`\`
 
 **Notes:** 
 - **Date:** 2025-08-20
@@ -263,7 +263,7 @@ headers: [
 - [ ] Add progress indicators for large files
 
 **Code Changes:**
-```javascript
+\`\`\`javascript
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES = ['text/csv', 'application/json', 'application/zip'];
 
@@ -276,7 +276,7 @@ const validateFile = (file: File) => {
     throw new Error(`Invalid file type: ${file.type}. Allowed: ${ALLOWED_MIME_TYPES.join(', ')}`);
   }
 };
-```
+\`\`\`
 
 **Notes:**
 - **Date:** 2025-08-20
@@ -299,7 +299,7 @@ const validateFile = (file: File) => {
 - [ ] Add user warnings for external links
 
 **Code Changes:**
-```javascript
+\`\`\`javascript
 const validateUrl = (url: string): boolean => {
   try {
     const urlObj = new URL(url);
@@ -322,7 +322,7 @@ const validateUrl = (url: string): boolean => {
     throw new Error(`Invalid URL: ${error.message}`);
   }
 };
-```
+\`\`\`
 
 **Notes:**
 - **Date:** 2025-08-20
@@ -345,7 +345,7 @@ const validateUrl = (url: string): boolean => {
 - [ ] Key derivation and secure storage
 
 **Code Changes:**
-```javascript
+\`\`\`javascript
 // Optional - only if user enables encryption
 import CryptoJS from 'crypto-js';
 
@@ -357,7 +357,7 @@ const decryptData = (encryptedData: string, password: string): string => {
   const bytes = CryptoJS.AES.decrypt(encryptedData, password);
   return bytes.toString(CryptoJS.enc.Utf8);
 };
-```
+\`\`\`
 
 **Notes:**
 - **Date:** 2025-08-20
@@ -393,13 +393,13 @@ const decryptData = (encryptedData: string, password: string): string => {
 ## 🔧 DEVELOPMENT NOTES
 
 ### Dependencies to Add:
-```bash
+\`\`\`bash
 npm install dompurify @types/dompurify  # For HTML sanitization
 npm install crypto-js @types/crypto-js  # For optional encryption (Phase 2)
-```
+\`\`\`
 
 ### ESLint Security Rules to Add:
-```json
+\`\`\`json
 {
   "extends": ["plugin:security/recommended"],
   "rules": {
@@ -408,7 +408,7 @@ npm install crypto-js @types/crypto-js  # For optional encryption (Phase 2)
     "security/detect-non-literal-fs-filename": "error"
   }
 }
-```
+\`\`\`
 
 ### Testing Checklist:
 - [ ] Test with malicious HTML content

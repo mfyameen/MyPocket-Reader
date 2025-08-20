@@ -43,6 +43,14 @@ import Papa from "papaparse"
 import JSZip from "jszip"
 // SECURITY: Import DOMPurify for HTML sanitization to prevent XSS attacks
 import DOMPurify from "dompurify"
+// Import compression utilities
+import {
+  saveCompressedToLocalStorage,
+  loadCompressedFromLocalStorage,
+  getCompressionStats,
+  migrateToCompressed,
+  type CompressionMetadata
+} from "@/lib/compression"
 
 interface Article {
   title: string
@@ -94,7 +102,11 @@ export default function PocketImporter() {
   const [showHighlightsOnly, setShowHighlightsOnly] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showUploadSection, setShowUploadSection] = useState(true)
-  const [cacheInfo, setCacheInfo] = useState<{ timestamp: number; size: string } | null>(null)
+  const [cacheInfo, setCacheInfo] = useState<{ timestamp: number; size: string; compressedSize?: string; compressionRatio?: number; originalSize?: string } | null>(null)
+  
+  // Compression state
+  const [useCompression, setUseCompression] = useState(true) // Enable compression by default
+  const [compressionMetadata, setCompressionMetadata] = useState<CompressionMetadata | null>(null)
   const [isLoadingFromCache, setIsLoadingFromCache] = useState(true)
   const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest" | "title-asc" | "title-desc">("default")
   const [fetchingTitles, setFetchingTitles] = useState<Set<string>>(new Set())
@@ -217,12 +229,13 @@ export default function PocketImporter() {
     return clean
   }, [])
 
-  // Cache management functions with improved debugging and security limits
+  // Cache management functions with compression support
   const saveToCache = useCallback((articlesData: Article[], highlightsData: ArticleWithHighlights[]) => {
     try {
-      console.log("💾 Saving to cache:", {
+      console.log("💾 Saving to cache with compression:", {
         articlesCount: articlesData.length,
         highlightsCount: highlightsData.length,
+        useCompression,
         timestamp: new Date().toISOString(),
       })
 
@@ -257,31 +270,21 @@ export default function PocketImporter() {
         highlightData: highlightsData,
         timestamp: Date.now(),
       }
-      const dataString = JSON.stringify(cacheData)
-      const dataSize = new Blob([dataString]).size
-
-      // SECURITY: Validate storage size before saving
-      if (dataSize > MAX_STORAGE_SIZE) {
-        const errorMsg = `🚨 Security Limit Exceeded: Data too large (${formatBytes(dataSize)}). Maximum allowed: ${formatBytes(MAX_STORAGE_SIZE)}.`
-        console.error(errorMsg)
-        alert(
-          "Security Limit Exceeded\n\n" +
-          `Your data size is ${formatBytes(dataSize)}, but the maximum allowed is ${formatBytes(MAX_STORAGE_SIZE)}.\n\n` +
-          "This limit prevents browser crashes and storage exhaustion attacks.\n\n" +
-          "Please reduce the amount of data or contact support for assistance."
-        )
-        throw new Error(errorMsg)
-      }
-
-      localStorage.setItem(CACHE_KEY, dataString)
-
-      // Update cache info
+      
+      // Use compression utilities
+      const metadata = saveCompressedToLocalStorage(CACHE_KEY, cacheData, useCompression)
+      setCompressionMetadata(metadata)
+      
+      // Update cache info with compression details
       setCacheInfo({
         timestamp: cacheData.timestamp,
-        size: formatBytes(dataSize),
+        size: formatBytes(metadata.compressedSize),
+        originalSize: formatBytes(metadata.originalSize),
+        compressedSize: formatBytes(metadata.compressedSize),
+        compressionRatio: metadata.compressionRatio,
       })
 
-      // SECURITY: Check for approaching limits and warn users
+      // SECURITY: Check for approaching limits and warn users (using original size for limits)
       let warnings = []
       
       if (articlesData.length >= ARTICLES_WARNING_THRESHOLD && articlesData.length < MAX_ARTICLES) {
@@ -292,13 +295,16 @@ export default function PocketImporter() {
         warnings.push(`⚠️ You have ${totalHighlights.toLocaleString()} highlights (${Math.round(totalHighlights / MAX_HIGHLIGHTS * 100)}% of limit). Consider removing old highlights.`)
       }
       
-      if (dataSize >= STORAGE_WARNING_THRESHOLD && dataSize < MAX_STORAGE_SIZE) {
-        warnings.push(`⚠️ Data size is ${formatBytes(dataSize)} (${Math.round(dataSize / MAX_STORAGE_SIZE * 100)}% of limit). Consider reducing data.`)
+      if (metadata.originalSize >= STORAGE_WARNING_THRESHOLD && metadata.originalSize < MAX_STORAGE_SIZE) {
+        warnings.push(`⚠️ Data size is ${formatBytes(metadata.originalSize)} (${Math.round(metadata.originalSize / MAX_STORAGE_SIZE * 100)}% of limit). Consider reducing data.`)
       }
       
       // Show warnings to user if any exist
       if (warnings.length > 0) {
-        const warningMessage = "Storage Usage Warning\n\n" + warnings.join('\n\n') + "\n\nYou can continue using the app, but consider cleaning up data to avoid hitting limits."
+        const compressionNote = useCompression && metadata.compressionRatio > 0 
+          ? `\n\nNote: With compression enabled, you're only using ${formatBytes(metadata.compressedSize)} of localStorage space.`
+          : ''
+        const warningMessage = "Storage Usage Warning\n\n" + warnings.join('\n\n') + compressionNote + "\n\nYou can continue using the app, but consider cleaning up data to avoid hitting limits."
         
         // Only show warning once per session to avoid spam
         const warningKey = `storage-warning-${Math.floor(Date.now() / (1000 * 60 * 60))}` // One warning per hour
@@ -309,10 +315,13 @@ export default function PocketImporter() {
         }
       }
 
-      console.log("✅ Cache saved successfully - Security checks passed:", {
+      console.log("✅ Cache saved successfully with compression - Security checks passed:", {
         articles: `${articlesData.length.toLocaleString()}/${MAX_ARTICLES.toLocaleString()}`,
         highlights: `${totalHighlights.toLocaleString()}/${MAX_HIGHLIGHTS.toLocaleString()}`,
-        size: `${formatBytes(dataSize)}/${formatBytes(MAX_STORAGE_SIZE)}`
+        originalSize: formatBytes(metadata.originalSize),
+        compressedSize: formatBytes(metadata.compressedSize),
+        compressionRatio: metadata.compressionRatio.toFixed(1) + '%',
+        savings: formatBytes(metadata.originalSize - metadata.compressedSize)
       })
     } catch (error) {
       console.error("❌ Failed to save data to cache:", error)
@@ -322,30 +331,60 @@ export default function PocketImporter() {
       }
       throw error // Re-throw to prevent further processing
     }
-  }, [])
+  }, [useCompression])
 
   const loadFromCache = useCallback(() => {
     try {
-      const cachedDataString = localStorage.getItem(CACHE_KEY)
-      if (cachedDataString) {
-        console.log("📂 Loading from cache...")
-        const cachedData: CachedData = JSON.parse(cachedDataString)
+      console.log("📂 Loading from cache with compression support...")
+      const { data: cachedData, metadata } = loadCompressedFromLocalStorage(CACHE_KEY)
+      
+      if (cachedData) {
         setArticles(cachedData.articles)
         setHighlightData(cachedData.highlightData)
-        setCacheInfo({
-          timestamp: cachedData.timestamp,
-          size: formatBytes(new Blob([cachedDataString]).size),
-        })
+        setCompressionMetadata(metadata)
+        
+        // Update cache info with compression details
+        if (metadata) {
+          setCacheInfo({
+            timestamp: cachedData.timestamp,
+            size: formatBytes(metadata.compressedSize),
+            originalSize: formatBytes(metadata.originalSize),
+            compressedSize: formatBytes(metadata.compressedSize),
+            compressionRatio: metadata.compressionRatio,
+          })
+        } else {
+          // Fallback for legacy cache
+          setCacheInfo({
+            timestamp: cachedData.timestamp,
+            size: "Unknown",
+          })
+        }
 
-        console.log("✅ Cache loaded successfully:", {
+        console.log("✅ Cache loaded successfully with compression:", {
           articlesCount: cachedData.articles.length,
           highlightsCount: cachedData.highlightData.length,
           cacheDate: new Date(cachedData.timestamp).toISOString(),
+          compressionVersion: metadata?.version || 'legacy',
+          compressionRatio: metadata ? metadata.compressionRatio.toFixed(1) + '%' : 'N/A',
+          originalSize: metadata ? formatBytes(metadata.originalSize) : 'Unknown',
+          compressedSize: metadata ? formatBytes(metadata.compressedSize) : 'Unknown',
         })
 
         // Hide upload section if we have both types of data
         if (cachedData.articles.length > 0 && cachedData.highlightData.length > 0) {
           setShowUploadSection(false)
+        }
+
+        // Auto-migrate legacy data to compressed format if compression is enabled
+        if (metadata && (metadata.version === 'legacy' || metadata.version === 'legacy-raw') && useCompression) {
+          console.log("🔄 Auto-migrating legacy data to compressed format...")
+          setTimeout(() => {
+            const migrated = migrateToCompressed(CACHE_KEY)
+            if (migrated) {
+              // Reload to get updated compression metadata
+              loadFromCache()
+            }
+          }, 1000) // Small delay to avoid blocking the UI
         }
 
         return true
@@ -354,7 +393,7 @@ export default function PocketImporter() {
       console.error("❌ Failed to load data from cache:", error)
     }
     return false
-  }, [])
+  }, [useCompression])
 
   const clearCache = useCallback(() => {
     if (!showClearCacheConfirm) {

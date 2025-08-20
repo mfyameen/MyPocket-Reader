@@ -46,7 +46,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "date-fns": "4.1.0",
-    "dompurify": "^3.2.6",
+    "dompurify": "latest",
     "embla-carousel-react": "latest",
     "geist": "^1.4.2",
     "input-otp": "latest",

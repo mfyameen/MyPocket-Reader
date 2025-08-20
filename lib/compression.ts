@@ -11,7 +11,7 @@ interface CompressionResult {
   compressionRatio: number;
 }
 
-interface CompressionMetadata {
+export interface CompressionMetadata {
   version: string;
   timestamp: number;
   originalSize: number;
@@ -267,8 +267,19 @@ export function migrateToCompressed(key: string): boolean {
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const unit = (i >= 0 && i < sizes.length) ? sizes[i] : sizes[0];
+  
+  // Use explicit bounds checking to avoid object injection concerns
+  let unit: string;
+  if (i >= 3) {
+    unit = 'GB';
+  } else if (i >= 2) {
+    unit = 'MB';
+  } else if (i >= 1) {
+    unit = 'KB';
+  } else {
+    unit = 'Bytes';
+  }
+  
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + unit;
 }

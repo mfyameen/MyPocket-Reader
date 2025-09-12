@@ -57,9 +57,9 @@ This document outlines the implementation plan for adding magic link authenticat
 **Estimated Time**: 1-2 weeks
 
 #### 1.1 NextAuth.js Setup
-```bash
+\`\`\`bash
 npm install next-auth @auth/core
-```
+\`\`\`
 
 #### 1.2 Required Files
 - `app/api/auth/[...nextauth]/route.ts` - Auth API routes
@@ -80,7 +80,7 @@ npm install next-auth @auth/core
 **Estimated Time**: 2-3 weeks
 
 #### 2.1 Database Schema Design
-```typescript
+\`\`\`typescript
 // Planned schema structure (exact implementation TBD)
 User {
   id: string
@@ -108,7 +108,7 @@ Highlight {
   quote: string
   createdAt: number
 }
-```
+\`\`\`
 
 #### 2.2 API Routes
 - `app/api/user/articles/route.ts` - Articles CRUD
@@ -226,7 +226,7 @@ Highlight {
 ## Deployment Considerations
 
 ### Environment Variables
-```env
+\`\`\`env
 NEXTAUTH_SECRET=
 NEXTAUTH_URL=
 EMAIL_SERVER_HOST=
@@ -235,7 +235,7 @@ EMAIL_SERVER_USER=
 EMAIL_SERVER_PASSWORD=
 EMAIL_FROM=
 DATABASE_URL= (TBD based on database choice)
-```
+\`\`\`
 
 ### Database Hosting
 - Production database setup (provider TBD)

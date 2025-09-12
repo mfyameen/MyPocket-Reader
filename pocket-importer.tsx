@@ -1692,125 +1692,258 @@ export default function PocketImporter() {
           </Card>
         )}
 
-        {/* Stats Section - Collapsible on Mobile */}
+
+        {/* Compact Statistics Strip - when articles exist */}
         {articles.length > 0 && (
-          <Card className="mb-6 sm:mb-8">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BarChart3 className="h-5 w-5" />
-                  Import Statistics
-                </CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setShowStats(!showStats)}>
-                  {showStats ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
+          <div className="bg-muted/30 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
+              <div onClick={() => {
+                // Clear all other filters and show total
+                setSearchTerm("")
+                setSelectedTags([])
+                setShowFavoritesOnly(false)
+                setShowHighlightsOnly(false)
+                setShowReadOnly(false)
+                setShowUnreadOnly(false)
+              }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show all articles">
+                <div className="text-sm sm:text-base lg:text-lg font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
+                <div className="text-muted-foreground text-xs">Total</div>
               </div>
-            </CardHeader>
-            <CardContent className={`${showStats ? "block" : "hidden"}`}>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-                <button
-                  onClick={() => {
-                    // Clear all filters to show total
-                    setSearchTerm("")
-                    setSelectedTags([])
-                    setShowFavoritesOnly(false)
-                    setShowHighlightsOnly(false)
-                    setSortBy("default")
-                    setShowFilters(true)
-                  }}
-                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
-                  title="Click to show all articles"
-                >
-                  <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {stats.totalArticles}
+              <div onClick={() => { setShowReadOnly(!showReadOnly); setShowUnreadOnly(false); }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show read articles">
+                <div className="text-sm sm:text-base lg:text-lg font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
+                <div className="text-muted-foreground text-xs">Read</div>
+              </div>
+              <div onClick={() => { setShowUnreadOnly(!showUnreadOnly); setShowReadOnly(false); }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show unread articles">
+                <div className="text-sm sm:text-base lg:text-lg font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
+                <div className="text-muted-foreground text-xs">Unread</div>
+              </div>
+              <div onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show favorites">
+                <div className="text-sm sm:text-base lg:text-lg font-bold text-yellow-600 dark:text-yellow-400">{stats.favoriteArticles}</div>
+                <div className="text-muted-foreground text-xs">Favorites</div>
+              </div>
+              <div onClick={() => setShowHighlightsOnly(!showHighlightsOnly)} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show articles with highlights">
+                <div className="text-sm sm:text-base lg:text-lg font-bold text-purple-600 dark:text-purple-400">{stats.articlesWithHighlights}</div>
+                <div className="text-muted-foreground text-xs">Highlights</div>
+              </div>
+              <div className="p-1 sm:p-2 hidden sm:block">
+                <div className="text-sm sm:text-base lg:text-lg font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
+                <div className="text-muted-foreground text-xs">Total Highlights</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sticky Controls Header */}
+        {articles.length > 0 && (
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b mb-4">
+            <div className="py-2 sm:py-3">
+              {/* Primary Controls Row */}
+              <div className="flex flex-col gap-2 mb-2 sm:mb-3">
+                {/* Search and basic controls */}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 h-8 sm:h-9 text-sm"
+                      />
+                    </div>
                   </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Total</div>
-                </button>
-                <button
-                  onClick={() => {
-                    // Filter to show only read articles
-                    setSearchTerm("")
-                    setSelectedTags([])
-                    setShowFavoritesOnly(false)
-                    setShowHighlightsOnly(false)
-                    setSortBy("default")
-                    // We need to add a read status filter
-                    setShowReadOnly(true)
-                    setShowFilters(true)
-                  }}
-                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
-                  title="Click to show only read articles"
-                >
-                  <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">
-                    {stats.readArticles}
+                  
+                  {/* Sort & Per Page - compact on mobile */}
+                  <Select
+                    value={sortBy}
+                    onValueChange={(value: "default" | "newest" | "oldest" | "title-asc" | "title-desc") =>
+                      setSortBy(value)
+                    }
+                  >
+                    <SelectTrigger className="w-24 sm:w-32 h-8 sm:h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Default</SelectItem>
+                      <SelectItem value="newest">Newest</SelectItem>
+                      <SelectItem value="oldest">Oldest</SelectItem>
+                      <SelectItem value="title-asc">Title A-Z</SelectItem>
+                      <SelectItem value="title-desc">Title Z-A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                    <SelectTrigger className="w-12 sm:w-16 h-8 sm:h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option.toString()}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Quick Filters Row - More compact on mobile */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                  <Button
+                    variant={showFavoritesOnly ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                    className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                  >
+                    <Star className="h-3 w-3 sm:mr-1" />
+                    <span className="hidden sm:inline">Favorites</span>
+                  </Button>
+                  <Button
+                    variant={showHighlightsOnly ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowHighlightsOnly(!showHighlightsOnly)}
+                    className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                  >
+                    <HighlightIcon className="h-3 w-3 sm:mr-1" />
+                    <span className="hidden sm:inline">Highlights</span>
+                  </Button>
+                  <Button
+                    variant={showReadOnly ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setShowReadOnly(!showReadOnly)
+                      setShowUnreadOnly(false)
+                    }}
+                    className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                  >
+                    <Check className="h-3 w-3 sm:mr-1" />
+                    <span className="hidden sm:inline">Read</span>
+                  </Button>
+                  <Button
+                    variant={showUnreadOnly ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setShowUnreadOnly(!showUnreadOnly)
+                      setShowReadOnly(false)
+                    }}
+                    className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                  >
+                    <X className="h-3 w-3 sm:mr-1" />
+                    <span className="hidden sm:inline">Unread</span>
+                  </Button>
+                  
+                  {/* More filters button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                  >
+                    <Filter className="h-3 w-3 sm:mr-1" />
+                    <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Tags'}</span>
+                  </Button>
+                </div>
+                
+                {/* Results count and selected tags */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {selectedTags.length > 0 && (
+                    <div className="hidden sm:flex items-center gap-1">
+                      {selectedTags.slice(0, 1).map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs h-5">
+                          {tag}
+                          <button
+                            onClick={() => handleTagToggle(tag)}
+                            className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                      {selectedTags.length > 1 && (
+                        <Badge variant="secondary" className="text-xs h-5">
+                          +{selectedTags.length - 1}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  <div className="whitespace-nowrap">
+                    {startIndex + 1}-{Math.min(endIndex, filteredArticles.length)} of {filteredArticles.length}
                   </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Read</div>
-                </button>
-                <button
-                  onClick={() => {
-                    // Filter to show only unread articles
-                    setSearchTerm("")
-                    setSelectedTags([])
-                    setShowFavoritesOnly(false)
-                    setShowHighlightsOnly(false)
-                    setSortBy("default")
-                    setShowReadOnly(false)
-                    setShowUnreadOnly(true)
-                    setShowFilters(true)
-                  }}
-                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
-                  title="Click to show only unread articles"
-                >
-                  <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {stats.unreadArticles}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Advanced Filters - Collapsible */}
+        {articles.length > 0 && showFilters && (
+          <Card className="mb-4">
+            <CardContent className="py-4">
+              <div className="space-y-4">
+                {/* Tag Selection */}
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Filter by Tags</Label>
+                  <div className="space-y-3">
+                    {selectedTags.length > 0 && (
+                      <div className="bg-primary/5 p-3 rounded-lg">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className="text-xs font-medium text-muted-foreground">Selected Tags:</span>
+                          {selectedTags.map((tag) => (
+                            <Badge key={tag} variant="default" className="flex items-center gap-1 text-xs">
+                              {tag}
+                              <button
+                                onClick={() => handleTagToggle(tag)}
+                                className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={clearSelectedTags} className="text-xs h-7">
+                          Clear All Tags
+                        </Button>
+                      </div>
+                    )}
+                    <div className="bg-muted/30 p-3 rounded-lg max-h-32 overflow-y-auto">
+                      <div className="flex flex-wrap gap-2">
+                        {allUniqueTags.map((tag) => {
+                          const isSelected = selectedTags.includes(tag)
+                          const isAvailable = availableTagsForCurrentFilters.includes(tag)
+                          const isDisabled = !isSelected && !isAvailable
+
+                          return (
+                            <Badge
+                              key={tag}
+                              variant={isSelected ? "default" : "outline"}
+                              className={`cursor-pointer transition-all text-xs ${
+                                isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
+                              }`}
+                              onClick={() => !isDisabled && handleTagToggle(tag)}
+                              title={
+                                isDisabled
+                                  ? "This tag cannot be combined with current filters"
+                                  : isSelected
+                                    ? "Click to remove this tag filter"
+                                    : "Click to add this tag filter"
+                              }
+                            >
+                              {tag}
+                            </Badge>
+                          )
+                        })}
+                      </div>
+                      {allUniqueTags.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-2">No tags available</p>
+                      )}
+                    </div>
+                    {selectedTags.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Disabled tags cannot be combined with your current selection
+                      </p>
+                    )}
                   </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Unread</div>
-                </button>
-                <button
-                  onClick={() => {
-                    // Filter to show only favorites
-                    setSearchTerm("")
-                    setSelectedTags([])
-                    setShowFavoritesOnly(true)
-                    setShowHighlightsOnly(false)
-                    setShowReadOnly(false)
-                    setShowUnreadOnly(false)
-                    setSortBy("default")
-                    setShowFilters(true)
-                  }}
-                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
-                  title="Click to show only favorite articles"
-                >
-                  <div className="text-lg sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {stats.favoriteArticles}
-                  </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Favorites</div>
-                </button>
-                <button
-                  onClick={() => {
-                    // Filter to show only articles with highlights
-                    setSearchTerm("")
-                    setSelectedTags([])
-                    setShowFavoritesOnly(false)
-                    setShowHighlightsOnly(true)
-                    setShowReadOnly(false)
-                    setShowUnreadOnly(false)
-                    setSortBy("default")
-                    setShowFilters(true)
-                  }}
-                  className="text-center p-3 sm:p-0 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
-                  title="Click to show only articles with highlights"
-                >
-                  <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-                    {stats.articlesWithHighlights}
-                  </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">With Highlights</div>
-                </button>
-                <div className="text-center p-3 sm:p-0">
-                  <div className="text-lg sm:text-2xl font-bold text-pink-600 dark:text-pink-400">
-                    {stats.totalHighlights}
-                  </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Total Highlights</div>
                 </div>
               </div>
             </CardContent>
@@ -1819,237 +1952,13 @@ export default function PocketImporter() {
 
         {/* Main Content */}
         {articles.length > 0 && (
-          <div className="space-y-4 sm:space-y-6">
-            {/* Search and Filter */}
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Filter className="h-5 w-5" />
-                    Search & Filters
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setShowFilters(!showFilters)}>
-                    {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className={`${showFilters ? "block" : "hidden"}`}>
-                <div className="space-y-4">
-                  {/* Search and Sort Row */}
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="flex-1">
-                      <Label htmlFor="search" className="text-sm font-medium mb-2 block">
-                        Search Articles
-                      </Label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="search"
-                          placeholder="Search by title, URL, or highlights..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 h-11 sm:h-10"
-                        />
-                      </div>
-                    </div>
-                    <div className="w-full lg:w-48">
-                      <Label htmlFor="sort-by" className="text-sm font-medium mb-2 block">
-                        Sort by
-                      </Label>
-                      <Select
-                        value={sortBy}
-                        onValueChange={(value: "default" | "newest" | "oldest" | "title-asc" | "title-desc") =>
-                          setSortBy(value)
-                        }
-                      >
-                        <SelectTrigger className="h-11 sm:h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Default Order</SelectItem>
-                          <SelectItem value="newest">Newest First</SelectItem>
-                          <SelectItem value="oldest">Oldest First</SelectItem>
-                          <SelectItem value="title-asc">Title A-Z</SelectItem>
-                          <SelectItem value="title-desc">Title Z-A</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Quick Filters */}
-                  <div className="bg-muted/30 p-4 rounded-lg">
-                    <Label className="text-sm font-medium mb-3 block">Quick Filters</Label>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex items-center space-x-3">
-                        <Checkbox
-                          id="favorites-only"
-                          checked={showFavoritesOnly}
-                          onCheckedChange={(checked) => setShowFavoritesOnly(checked as boolean)}
-                        />
-                        <Label
-                          htmlFor="favorites-only"
-                          className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                        >
-                          <Star className="h-4 w-4 text-yellow-500" />
-                          Show Favorites Only
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Checkbox
-                          id="highlights-only"
-                          checked={showHighlightsOnly}
-                          onCheckedChange={(checked) => setShowHighlightsOnly(checked as boolean)}
-                        />
-                        <Label
-                          htmlFor="highlights-only"
-                          className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                        >
-                          <HighlightIcon className="h-4 w-4 text-purple-500" />
-                          Show With Highlights Only
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Checkbox
-                          id="read-only"
-                          checked={showReadOnly}
-                          onCheckedChange={(checked) => {
-                            setShowReadOnly(checked as boolean)
-                            if (checked) setShowUnreadOnly(false)
-                          }}
-                        />
-                        <Label
-                          htmlFor="read-only"
-                          className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                        >
-                          <Check className="h-4 w-4 text-green-500" />
-                          Show Read Only
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Checkbox
-                          id="unread-only"
-                          checked={showUnreadOnly}
-                          onCheckedChange={(checked) => {
-                            setShowUnreadOnly(checked as boolean)
-                            if (checked) setShowReadOnly(false)
-                          }}
-                        />
-                        <Label
-                          htmlFor="unread-only"
-                          className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                        >
-                          <X className="h-4 w-4 text-orange-500" />
-                          Show Unread Only
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tag Selection */}
-                  <div>
-                    <Label className="text-sm font-medium mb-3 block">Filter by Tags</Label>
-                    <div className="space-y-3">
-                      {selectedTags.length > 0 && (
-                        <div className="bg-primary/5 p-3 rounded-lg">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <span className="text-xs font-medium text-muted-foreground">Selected Tags:</span>
-                            {selectedTags.map((tag) => (
-                              <Badge key={tag} variant="default" className="flex items-center gap-1 text-xs">
-                                {tag}
-                                <button
-                                  onClick={() => handleTagToggle(tag)}
-                                  className="ml-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full p-0.5"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </Badge>
-                            ))}
-                          </div>
-                          <Button variant="ghost" size="sm" onClick={clearSelectedTags} className="text-xs h-7">
-                            Clear All Tags
-                          </Button>
-                        </div>
-                      )}
-                      <div className="bg-muted/30 p-3 rounded-lg max-h-32 overflow-y-auto">
-                        <div className="flex flex-wrap gap-2">
-                          {allUniqueTags.map((tag) => {
-                            const isSelected = selectedTags.includes(tag)
-                            const isAvailable = availableTagsForCurrentFilters.includes(tag)
-                            const isDisabled = !isSelected && !isAvailable
-
-                            return (
-                              <Badge
-                                key={tag}
-                                variant={isSelected ? "default" : "outline"}
-                                className={`cursor-pointer transition-all text-xs ${
-                                  isDisabled ? "opacity-40 cursor-not-allowed hover:opacity-40" : "hover:bg-primary/80"
-                                }`}
-                                onClick={() => !isDisabled && handleTagToggle(tag)}
-                                title={
-                                  isDisabled
-                                    ? "This tag cannot be combined with current filters"
-                                    : isSelected
-                                      ? "Click to remove this tag filter"
-                                      : "Click to add this tag filter"
-                                }
-                              >
-                                {tag}
-                              </Badge>
-                            )
-                          })}
-                        </div>
-                        {allUniqueTags.length === 0 && (
-                          <p className="text-xs text-muted-foreground text-center py-2">No tags available</p>
-                        )}
-                      </div>
-                      {selectedTags.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Disabled tags cannot be combined with your current selection
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Pagination Info - separate from filters */}
-            {articles.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="items-per-page-main" className="text-sm font-medium">
-                        Items per page:
-                      </Label>
-                      <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-                        <SelectTrigger className="w-20 h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                            <SelectItem key={option} value={option.toString()}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="text-sm text-muted-foreground text-center sm:text-right">
-                      Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-                      <span className="font-medium">{Math.min(endIndex, filteredArticles.length)}</span> of{" "}
-                      <span className="font-medium">{filteredArticles.length}</span> articles
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          <div className="space-y-4 sm:space-y-6">{/* This div will contain the articles list */}
 
             {/* Articles List */}
             {/* Articles List - Masonry Layout */}
             <div
               ref={articlesListRef}
-              className="columns-1 md:columns-2 xl:columns-3 gap-4 sm:gap-6 space-y-4 sm:space-y-6"
+              className="columns-1 md:columns-2 xl:columns-3 gap-4 sm:gap-6 space-y-4 sm:space-y-6 pb-20"
             >
               {paginatedArticles.map((article, index) => {
                 const highlights = getHighlightsForArticle(article.url)
@@ -2313,113 +2222,6 @@ export default function PocketImporter() {
                 )
               })}
             </div>
-            {/* Pagination Navigation */}
-            {totalPages > 1 && (
-              <Card>
-                <CardContent className="py-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    {/* Main pagination controls - single row on mobile */}
-                    <div className="flex items-center justify-center gap-1">
-                      {/* Previous page button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const newPage = Math.max(1, currentPage - 1)
-                          setCurrentPage(newPage)
-                          scrollToArticlesList()
-                        }}
-                        disabled={currentPage === 1}
-                        className="h-8 px-2 sm:px-3"
-                        aria-label="Go to previous page"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        <span className="hidden sm:inline ml-1">Previous</span>
-                      </Button>
-
-                      {/* Page numbers - show current ± 2 */}
-                      {(() => {
-                        const pages = []
-                        const start = Math.max(1, currentPage - 2)
-                        const end = Math.min(totalPages, currentPage + 2)
-
-                        for (let i = start; i <= end; i++) {
-                          pages.push(i)
-                        }
-
-                        return pages.map((pageNum) => (
-                          <Button
-                            key={pageNum}
-                            variant={currentPage === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setCurrentPage(pageNum)
-                              scrollToArticlesList()
-                            }}
-                            className="w-8 h-8 text-sm"
-                            aria-label={`Go to page ${pageNum}`}
-                            aria-current={currentPage === pageNum ? "page" : undefined}
-                          >
-                            {pageNum}
-                          </Button>
-                        ))
-                      })()}
-
-                      {/* Next page button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const newPage = Math.min(totalPages, currentPage + 1)
-                          setCurrentPage(newPage)
-                          scrollToArticlesList()
-                        }}
-                        disabled={currentPage === totalPages}
-                        className="h-8 px-2 sm:px-3"
-                        aria-label="Go to next page"
-                      >
-                        <span className="hidden sm:inline mr-1">Next</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Jump to page input */}
-                    <div className="flex items-center justify-center sm:justify-end gap-2 text-sm">
-                      <span className="text-muted-foreground">Page</span>
-                      <Input
-                        type="number"
-                        min="1"
-                        max={totalPages}
-                        value={currentPage}
-                        onChange={(e) => {
-                          const page = Number.parseInt(e.target.value)
-                          if (page >= 1 && page <= totalPages) {
-                            setCurrentPage(page)
-                            scrollToArticlesList()
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            const page = Number.parseInt((e.target as HTMLInputElement).value)
-                            if (page >= 1 && page <= totalPages) {
-                              setCurrentPage(page)
-                              scrollToArticlesList()
-                            }
-                          }
-                        }}
-                        className="w-16 h-8 text-center"
-                      />
-                      <span className="text-muted-foreground">of {totalPages}</span>
-                    </div>
-                  </div>
-
-                  {/* Keyboard shortcuts info - only show on desktop */}
-                  <div className="hidden sm:flex items-center justify-center mt-3 pt-3 border-t">
-                    <div className="text-xs text-muted-foreground">Use ← → arrow keys to navigate pages</div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {filteredArticles.length === 0 && articles.length > 0 && (
               <Card>
@@ -2468,6 +2270,107 @@ export default function PocketImporter() {
             </a>
           </div>
         </footer>
+
+        {/* Floating Bottom Pagination - only show when there are multiple pages and articles are visible */}
+        {totalPages > 1 && articles.length > 0 && (
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 max-w-[calc(100vw-2rem)]">
+            <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg px-2 sm:px-3 py-1.5 sm:py-2">
+              <div className="flex items-center justify-center gap-1 sm:gap-2">
+                {/* Previous button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const newPage = Math.max(1, currentPage - 1)
+                    setCurrentPage(newPage)
+                    scrollToArticlesList()
+                  }}
+                  disabled={currentPage === 1}
+                  className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+                </Button>
+
+                {/* Page numbers - more compact on mobile */}
+                {(() => {
+                  const pages = []
+                  // Mobile: show current page only, Desktop: show more pages
+                  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+                  const range = isMobile ? 0 : 1
+                  const start = Math.max(1, currentPage - range)
+                  const end = Math.min(totalPages, currentPage + range)
+
+                  // Always show first page if not near it (desktop only)
+                  if (!isMobile && start > 1) {
+                    pages.push(1)
+                    if (start > 2) pages.push('...')
+                  }
+
+                  // Add middle pages
+                  for (let i = start; i <= end; i++) {
+                    pages.push(i)
+                  }
+
+                  // Always show last page if not near it (desktop only)
+                  if (!isMobile && end < totalPages) {
+                    if (end < totalPages - 1) pages.push('...')
+                    pages.push(totalPages)
+                  }
+
+                  return pages.map((pageNum, index) => {
+                    if (pageNum === '...') {
+                      return (
+                        <span key={`ellipsis-${index}`} className="px-1 text-muted-foreground text-xs">
+                          …
+                        </span>
+                      )
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentPage(pageNum as number)
+                          scrollToArticlesList()
+                        }}
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-xs sm:text-sm"
+                        aria-label={`Go to page ${pageNum}`}
+                        aria-current={currentPage === pageNum ? "page" : undefined}
+                      >
+                        {pageNum}
+                      </Button>
+                    )
+                  })
+                })()}
+
+                {/* Next button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const newPage = Math.min(totalPages, currentPage + 1)
+                    setCurrentPage(newPage)
+                    scrollToArticlesList()
+                  }}
+                  disabled={currentPage === totalPages}
+                  className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                </Button>
+
+                {/* Page indicator - always visible but compact on mobile */}
+                <div className="flex items-center ml-1 sm:ml-2 pl-1 sm:pl-2 border-l text-xs text-muted-foreground">
+                  <span className="sm:hidden">{currentPage}/{totalPages}</span>
+                  <span className="hidden sm:inline">Page {currentPage} of {totalPages}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Click outside to close cache menu */}
         {showCacheMenu && (

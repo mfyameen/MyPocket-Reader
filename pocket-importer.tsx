@@ -116,6 +116,7 @@ export default function PocketImporter() {
   // Mobile UI state
   const [showFilters, setShowFilters] = useState(true)
   const [showStats, setShowStats] = useState(true)
+  const [showStatsStrip, setShowStatsStrip] = useState(true)
 
   // New states for inline highlight editing
   const [addingHighlight, setAddingHighlight] = useState<string | null>(null)
@@ -1693,41 +1694,82 @@ export default function PocketImporter() {
         )}
 
 
-        {/* Compact Statistics Strip - when articles exist */}
+        {/* Collapsible Statistics Strip - when articles exist */}
         {articles.length > 0 && (
-          <div className="bg-muted/30 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
-              <div onClick={() => {
-                // Clear all other filters and show total
-                setSearchTerm("")
-                setSelectedTags([])
-                setShowFavoritesOnly(false)
-                setShowHighlightsOnly(false)
-                setShowReadOnly(false)
-                setShowUnreadOnly(false)
-              }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show all articles">
-                <div className="text-sm sm:text-base lg:text-lg font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
-                <div className="text-muted-foreground text-xs">Total</div>
+          <div className="bg-muted/30 rounded-lg mb-3 sm:mb-4">
+            {/* Statistics Header with Toggle */}
+            <div className="flex items-center justify-between p-2 sm:p-3">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium text-muted-foreground">Statistics</h3>
+                {!showStatsStrip && (
+                  <div className="flex items-center gap-3 ml-3">
+                    <span className="text-xs text-muted-foreground">
+                      {stats.totalArticles} articles
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {stats.readArticles}R / {stats.unreadArticles}U
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {stats.favoriteArticles}⭐
+                    </span>
+                  </div>
+                )}
               </div>
-              <div onClick={() => { setShowReadOnly(!showReadOnly); setShowUnreadOnly(false); }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show read articles">
-                <div className="text-sm sm:text-base lg:text-lg font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
-                <div className="text-muted-foreground text-xs">Read</div>
-              </div>
-              <div onClick={() => { setShowUnreadOnly(!showUnreadOnly); setShowReadOnly(false); }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show unread articles">
-                <div className="text-sm sm:text-base lg:text-lg font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
-                <div className="text-muted-foreground text-xs">Unread</div>
-              </div>
-              <div onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show favorites">
-                <div className="text-sm sm:text-base lg:text-lg font-bold text-yellow-600 dark:text-yellow-400">{stats.favoriteArticles}</div>
-                <div className="text-muted-foreground text-xs">Favorites</div>
-              </div>
-              <div onClick={() => setShowHighlightsOnly(!showHighlightsOnly)} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show articles with highlights">
-                <div className="text-sm sm:text-base lg:text-lg font-bold text-purple-600 dark:text-purple-400">{stats.articlesWithHighlights}</div>
-                <div className="text-muted-foreground text-xs">Highlights</div>
-              </div>
-              <div className="p-1 sm:p-2 hidden sm:block">
-                <div className="text-sm sm:text-base lg:text-lg font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
-                <div className="text-muted-foreground text-xs">Total Highlights</div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowStatsStrip(!showStatsStrip)}
+                className="h-7 w-7 p-0 sm:h-8 sm:w-8"
+                title={showStatsStrip ? 'Hide statistics' : 'Show statistics'}
+              >
+                {showStatsStrip ? (
+                  <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                )}
+              </Button>
+            </div>
+            
+            {/* Statistics Content */}
+            <div className={`transition-all duration-200 ease-in-out overflow-hidden ${
+              showStatsStrip ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+            }`}>
+              <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
+                  <div onClick={() => {
+                    // Clear all other filters and show total
+                    setSearchTerm("")
+                    setSelectedTags([])
+                    setShowFavoritesOnly(false)
+                    setShowHighlightsOnly(false)
+                    setShowReadOnly(false)
+                    setShowUnreadOnly(false)
+                  }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show all articles">
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-blue-600 dark:text-blue-400">{stats.totalArticles}</div>
+                    <div className="text-muted-foreground text-xs">Total</div>
+                  </div>
+                  <div onClick={() => { setShowReadOnly(!showReadOnly); setShowUnreadOnly(false); }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show read articles">
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-green-600 dark:text-green-400">{stats.readArticles}</div>
+                    <div className="text-muted-foreground text-xs">Read</div>
+                  </div>
+                  <div onClick={() => { setShowUnreadOnly(!showUnreadOnly); setShowReadOnly(false); }} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show unread articles">
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-orange-600 dark:text-orange-400">{stats.unreadArticles}</div>
+                    <div className="text-muted-foreground text-xs">Unread</div>
+                  </div>
+                  <div onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show favorites">
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-yellow-600 dark:text-yellow-400">{stats.favoriteArticles}</div>
+                    <div className="text-muted-foreground text-xs">Favorites</div>
+                  </div>
+                  <div onClick={() => setShowHighlightsOnly(!showHighlightsOnly)} className="cursor-pointer hover:bg-muted/50 p-1 sm:p-2 rounded transition-colors" title="Click to show articles with highlights">
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-purple-600 dark:text-purple-400">{stats.articlesWithHighlights}</div>
+                    <div className="text-muted-foreground text-xs">Highlights</div>
+                  </div>
+                  <div className="p-1 sm:p-2 hidden sm:block">
+                    <div className="text-sm sm:text-base lg:text-lg font-bold text-pink-600 dark:text-pink-400">{stats.totalHighlights}</div>
+                    <div className="text-muted-foreground text-xs">Total Highlights</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1833,6 +1875,17 @@ export default function PocketImporter() {
                     <span className="hidden sm:inline">Unread</span>
                   </Button>
                   
+                  {/* Stats toggle button - mobile only */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowStatsStrip(!showStatsStrip)}
+                    className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm sm:hidden"
+                    title={showStatsStrip ? 'Hide statistics' : 'Show statistics'}
+                  >
+                    <BarChart3 className="h-3 w-3" />
+                  </Button>
+                  
                   {/* More filters button */}
                   <Button
                     variant="ghost"
@@ -1845,8 +1898,17 @@ export default function PocketImporter() {
                   </Button>
                 </div>
                 
-                {/* Results count and selected tags */}
+                {/* Results count, selected tags, and mini stats */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {/* Mini stats when collapsed - mobile only */}
+                  {!showStatsStrip && (
+                    <div className="flex items-center gap-2 sm:hidden">
+                      <span className="text-blue-600 dark:text-blue-400 font-medium">{stats.totalArticles}</span>
+                      <span>/</span>
+                      <span className="text-yellow-600 dark:text-yellow-400">{stats.favoriteArticles}⭐</span>
+                    </div>
+                  )}
+                  
                   {selectedTags.length > 0 && (
                     <div className="hidden sm:flex items-center gap-1">
                       {selectedTags.slice(0, 1).map((tag) => (

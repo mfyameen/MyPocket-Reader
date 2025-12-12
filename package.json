@@ -50,7 +50,7 @@
     "jszip": "latest",
     "lucide-react": "^0.454.0",
     "lz-string": "latest",
-    "next": "latest",
+    "next": "16.0.10",
     "next-themes": "latest",
     "papaparse": "latest",
     "react": "^19",
